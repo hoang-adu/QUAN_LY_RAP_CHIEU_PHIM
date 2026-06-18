@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  "typescript.updateImportsOnFileMove.enabled": "always",
+
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": true
+  }
+}

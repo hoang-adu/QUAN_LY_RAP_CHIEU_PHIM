@@ -29,11 +29,11 @@ import { AuthModule } from './auth/auth.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'mysql',
-      host: 'mysql',
+      host: 'localhost',
       port: 3306,
       username: 'root',
-      password: 'root',
-      database: 'rapchieuphim',
+      password: 'PhuongAnh1',
+      database: 'quan_ly_rap_chieu_phim',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
     }),

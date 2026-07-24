@@ -5,6 +5,17 @@
   justify-content: space-between;
   margin-bottom: 16px;
 }
+.page-btn-add {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 12.8px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(240, 134, 42, 0.28);
+}
 .page-title {
   font-size: 19px;
   font-weight: 700;
@@ -84,6 +95,32 @@
   color: #8a6a00;
 }
 .et-badge.cancel {
+  background: #fbe1e2;
+  color: #b8232a;
+}
+
+.et-actions-col {
+  white-space: nowrap;
+  width: 1%;
+}
+.et-actions {
+  display: flex;
+  gap: 8px;
+}
+.et-btn-edit,
+.et-btn-delete {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.et-btn-edit {
+  background: #e8edfb;
+  color: var(--navy-light, #2457c5);
+}
+.et-btn-delete {
   background: #fbe1e2;
   color: #b8232a;
 }

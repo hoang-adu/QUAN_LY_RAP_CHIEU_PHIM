@@ -1,0 +1,113 @@
+/* src/pages/FormModal.css */
+.fm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 20, 35, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.fm-box {
+  background: #fff;
+  border-radius: 12px;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(15, 20, 35, 0.25);
+}
+.fm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.fm-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.fm-close {
+  border: none;
+  background: none;
+  font-size: 15px;
+  color: var(--text-grey);
+  cursor: pointer;
+}
+.fm-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fm-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.fm-req {
+  color: #e5484d;
+}
+.fm-field input,
+.fm-field select,
+.fm-field textarea {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 9px 11px;
+  font-size: 13px;
+  color: var(--text-dark);
+  font-family: inherit;
+}
+.fm-field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+.fm-error {
+  margin: 0 20px 12px;
+  padding: 9px 12px;
+  background: #fdf2f3;
+  border: 1px solid #f3c6c8;
+  color: #b8232a;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+.fm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+.fm-btn-cancel {
+  background: #eef1f8;
+  color: var(--text-dark);
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 12.8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fm-btn-save {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 12.8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fm-btn-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

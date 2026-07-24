@@ -173,6 +173,11 @@
   display: inline-block;
   text-decoration: none;
 }
+.mv-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
 
 .mv-add-new {
   align-items: center;

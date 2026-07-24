@@ -26,9 +26,10 @@ export function createItem(path, dto) {
   }).then(handleResponse);
 }
 
-export function updateItem(path, id, dto) {
+// method mặc định PATCH; endpoint tickets dùng PUT nên cho phép override khi cần.
+export function updateItem(path, id, dto, method = "PATCH") {
   return fetch(`${API_BASE}/${path}/${id}`, {
-    method: "PATCH",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dto),
   }).then(handleResponse);

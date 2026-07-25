@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsIn, MinLength } from 'class-validator';
 
 export class CreateEmployeeDto {
   @IsString()
@@ -16,4 +16,14 @@ export class CreateEmployeeDto {
   @IsString()
   @IsOptional()
   position?: string;
+
+  @IsString()
+  @IsOptional()
+  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
+  password?: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['admin', 'employee'], { message: 'Quyền chỉ được là admin hoặc employee' })
+  role?: string;
 }

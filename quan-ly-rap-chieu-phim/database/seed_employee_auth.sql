@@ -11,7 +11,6 @@ WHERE email = 'cuong.le@cinema.com';
 --    Tài khoản: dung.pham / Mật khẩu: nhanvien123
 
 UPDATE employees
-UPDATE employees
 SET username = 'dung.pham',
     password = '$2b$12$yoFuiY6Y1tEvcpeYEYUPy..rmOXzhsYNSgWDWg/62cIgqqoGkIA4W',
     role = 'employee'

@@ -1,14 +1,78 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { API_BASE } from "../api/apiClient";
 import { saveAuth } from "../api/auth";
+import logo from "../assects/logo-mattroinho.png";
 import "./login.css";
+
+// Ảnh nền rạp chiếu phim theo yêu cầu
+const HERO_BG =
+  "https://halotravel.vn/wp-content/uploads/2020/11/rap-chieu-phim-quoc-gia-o-dau.jpg";
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+      <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M4.5 19.2c1.4-3.1 4.2-4.7 7.5-4.7s6.1 1.6 7.5 4.7"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+      <rect
+        x="5"
+        y="10.5"
+        width="14"
+        height="9"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M8 10.5V8a4 4 0 0 1 8 0v2.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function EyeIcon({ off }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+      <path
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.6" />
+      {off && (
+        <path
+          d="M4 4l16 16"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState("account"); // "account" | "otp"
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -37,48 +101,124 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <div className="login-card">
-<div className="login-brand">
-  <img src="https://media-cdn-v2.laodong.vn/Storage/newsportal/2019/4/2/666385/11.jpg" alt="Logo rạp chiếu phim" className="login-badge" />
-  <div>
-    <b><span>QUẢN LÝ RẠP CHIẾU PHIM</span></b>
-  </div>
-</div>
+      {/* Header trắng giữ nguyên khoảng trắng phía trên */}
+      <header className="login-header">
+        <div className="login-header__inner">
+          <div className="login-header__brand">
+            <img src={logo} alt="Logo" />
+            <span>RẠP PHIM MẶT TRỜI NHỎ</span>
+          </div>
+        </div>
+      </header>
 
-        <h1>Đăng nhập</h1>
-        <p className="login-sub">
-          Dành cho Quản trị viên (Admin) và Nhân viên rạp
-        </p>
+      {/* Hero section dùng nền hình ảnh rạp phim */}
+      <div
+        className="login-hero"
+        style={{ backgroundImage: `url(${HERO_BG})` }}
+      >
+        <div className="login-hero__overlay" />
 
-        <form onSubmit={handleSubmit}>
-          <label>Tài khoản</label>
-          <input
-            type="text"
-            required
-            placeholder="vd: admin"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
+        <div className="login-hero__content">
+          {/* Bên trái: Logo + Tên rạp lớn */}
+          <div className="login-hero__intro">
+            <img src={logo} alt="Rạp Phim Mặt Trời Nhỏ" className="login-hero__logo" />
+            <h1>
+              RẠP PHIM
+              <br />
+              MẶT TRỜI NHỎ
+            </h1>
+            <p>Kênh đặt vé & Quản lý rạp phim Mặt Trời Nhỏ</p>
+          </div>
 
-          <label>Mật khẩu</label>
-          <input
-            type="password"
-            required
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          {/* Bên phải: Form đăng nhập theo bố cục Lotte Mart */}
+          <div className="login-card">
+            <h2>Đăng nhập</h2>
 
-          {error && <div className="login-error">{error}</div>}
+            <div className="login-tabs">
+              <button
+                type="button"
+                className={tab === "account" ? "active" : ""}
+                onClick={() => setTab("account")}
+              >
+                Tài Khoản
+              </button>
+              <button
+                type="button"
+                className={tab === "otp" ? "active" : ""}
+                onClick={() => setTab("otp")}
+              >
+                Bằng OTP
+              </button>
+            </div>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
-          </button>
-        </form>
+            {tab === "account" ? (
+              <form onSubmit={handleSubmit}>
+                <label className="login-field">
+                  <span className="login-field__icon">
+                    <UserIcon />
+                  </span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Email/Số điện thoại*"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                  />
+                </label>
 
-        <div className="login-hint">
-          Tài khoản mẫu — Admin: admin / cinema@123 · Nhân viên:
-          dung.pham / nhanvien123
+                <label className="login-field">
+                  <span className="login-field__icon">
+                    <LockIcon />
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="Mật khẩu*"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="login-field__toggle"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    <EyeIcon off={showPassword} />
+                  </button>
+                </label>
+
+                <div className="login-forgot">
+                  <button type="button" className="login-link-btn">
+                    Quên mật khẩu?
+                  </button>
+                </div>
+
+                {error && <div className="login-error">{error}</div>}
+
+                <button type="submit" className="login-submit" disabled={loading}>
+                  {loading ? "Đang xử lý..." : "Đăng nhập"}
+                </button>
+              </form>
+            ) : (
+              <div className="login-otp-note">
+                Đăng nhập bằng OTP đang được phát triển. Vui lòng dùng tài khoản để đăng nhập.
+              </div>
+            )}
+
+            {/* Dòng chuyển đổi sang Đăng ký tài khoản (Chuẩn theo mẫu Lotte Mart) */}
+            <div className="login-footer-register">
+              Quý khách chưa có tài khoản? <Link to="/register">Đăng ký tài khoản</Link>
+            </div>
+
+            {/* Giữ lại phần tài khoản mẫu theo yêu cầu */}
+            <div className="login-hint">
+              <strong>Tài khoản mẫu:</strong><br />
+              Admin: admin / cinema@123<br />
+              Nhân viên: dung.pham / nhanvien123
+            </div>
+          </div>
         </div>
       </div>
     </div>

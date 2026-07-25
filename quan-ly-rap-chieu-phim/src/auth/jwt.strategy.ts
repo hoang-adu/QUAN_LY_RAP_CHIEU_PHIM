@@ -14,7 +14,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: { sub: number; email: string }) {
+  validate(payload: { sub: number; email: string; role?: string }) {
+    if (payload.role) {
+      // Token của nhân viên/admin (có role) -> gán employee_id + role
+      return {
+        employee_id: payload.sub,
+        email: payload.email,
+        role: payload.role,
+      };
+    }
+    // Token của khách hàng -> không có role
     return { customer_id: payload.sub, email: payload.email };
   }
 }

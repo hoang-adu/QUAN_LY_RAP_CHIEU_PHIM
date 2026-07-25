@@ -1,8 +1,3 @@
--- ==========================================================================
--- Script gán mật khẩu đăng nhập + phân quyền cho nhân viên có sẵn trong CSDL
--- CHẠY SAU KHI: đã restart backend 1 lần (để TypeORM tự thêm cột password, role
--- vào bảng employees nhờ synchronize: true trong app.module.ts)
--- ==========================================================================
 
 -- 1) Lê Văn Cường (Quản lý) -> đăng nhập với quyền ADMIN
 --    Mật khẩu: admin123

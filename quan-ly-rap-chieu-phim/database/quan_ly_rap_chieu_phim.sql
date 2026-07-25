@@ -1,6 +1,4 @@
 
-
-
 -- 1. Bảng phim (movies)
 CREATE TABLE movies (
     movie_id      INT AUTO_INCREMENT PRIMARY KEY,
@@ -26,29 +24,31 @@ CREATE TABLE rooms (
 CREATE TABLE seats (
     seat_id      INT AUTO_INCREMENT PRIMARY KEY,
     room_id      INT         NOT NULL,
-    seat_number  VARCHAR(10),                 -- VD: A1, B2, ...
-    seat_type    VARCHAR(20),                 -- 'standard', 'vip', 'couple'
-    FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE
+    seat_number  VARCHAR(10) NOT NULL,        -- VD: A1, B2, ...
+    seat_type    VARCHAR(20) DEFAULT 'standard', -- 'standard', 'vip', 'couple'
+    UNIQUE KEY uq_seat_room (room_id, seat_number),
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE RESTRICT
 );
 
 -- 4. Bảng khách hàng (customers)
 CREATE TABLE customers (
     customer_id  INT AUTO_INCREMENT PRIMARY KEY,
-    full_name    VARCHAR(100),
+    full_name    VARCHAR(100) NOT NULL,
     phone        VARCHAR(20),
-    email        VARCHAR(100) UNIQUE,
-    password     VARCHAR(255),
+    email        VARCHAR(100) NOT NULL UNIQUE,
+    password     VARCHAR(255) NOT NULL,
     points       INT DEFAULT 0                -- Điểm tích lũy
 );
-
 
 -- 5. Bảng nhân viên (employees)
 CREATE TABLE employees (
     employee_id  INT AUTO_INCREMENT PRIMARY KEY,
-    full_name    VARCHAR(100),
+    full_name    VARCHAR(100) NOT NULL,
     phone        VARCHAR(20),
-    email        VARCHAR(100),
-    position     VARCHAR(50)                  -- VD: 'thu ngân', 'bảo vệ', 'quản lý'
+    email        VARCHAR(100) NOT NULL UNIQUE,
+    password     VARCHAR(255) NOT NULL,
+    position     VARCHAR(50),                 -- VD: 'Thu ngân', 'Bảo vệ', 'Nhân viên', 'Admin'
+    role         ENUM('admin', 'employee') NOT NULL DEFAULT 'employee'
 );
 
 -- 6. Bảng suất chiếu (showtimes)
@@ -56,11 +56,12 @@ CREATE TABLE showtimes (
     showtime_id  INT AUTO_INCREMENT PRIMARY KEY,
     movie_id     INT  NOT NULL,
     room_id      INT  NOT NULL,
-    show_date    DATE,
-    start_time   TIME,
-    end_time     TIME,
-    FOREIGN KEY (movie_id) REFERENCES movies(movie_id)   ON DELETE CASCADE,
-    FOREIGN KEY (room_id)  REFERENCES rooms(room_id)     ON DELETE CASCADE
+    show_date    DATE NOT NULL,
+    start_time   TIME NOT NULL,
+    end_time     TIME NOT NULL,
+    UNIQUE KEY uq_room_datetime (room_id, show_date, start_time),
+    FOREIGN KEY (movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE,
+    FOREIGN KEY (room_id)  REFERENCES rooms(room_id)   ON DELETE RESTRICT
 );
 
 -- 7. Bảng đặt vé (bookings)
@@ -68,9 +69,9 @@ CREATE TABLE bookings (
     booking_id    INT AUTO_INCREMENT PRIMARY KEY,
     customer_id   INT          NOT NULL,
     booking_date  DATETIME     DEFAULT CURRENT_TIMESTAMP,
-    total_amount  DECIMAL(10,2),
-    status        VARCHAR(20),                -- 'pending', 'confirmed', 'cancelled'
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE
+    total_amount  DECIMAL(10,2) DEFAULT 0,
+    status        ENUM('pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'pending',
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE RESTRICT
 );
 
 -- 8. Bảng vé (tickets)
@@ -79,30 +80,32 @@ CREATE TABLE tickets (
     booking_id    INT           NOT NULL,
     showtime_id   INT           NOT NULL,
     seat_id       INT           NOT NULL,
-    ticket_price  DECIMAL(10,2),
+    ticket_price  DECIMAL(10,2) NOT NULL,
+    -- Chống bán trùng ghế cho cùng 1 suất chiếu
+    UNIQUE KEY uq_seat_showtime (showtime_id, seat_id),
     FOREIGN KEY (booking_id)  REFERENCES bookings(booking_id)   ON DELETE CASCADE,
-    FOREIGN KEY (showtime_id) REFERENCES showtimes(showtime_id) ON DELETE CASCADE,
-    FOREIGN KEY (seat_id)     REFERENCES seats(seat_id)         ON DELETE CASCADE
+    FOREIGN KEY (showtime_id) REFERENCES showtimes(showtime_id) ON DELETE RESTRICT,
+    FOREIGN KEY (seat_id)     REFERENCES seats(seat_id)         ON DELETE RESTRICT
 );
-
 
 -- 9. Bảng thanh toán (payments)
 CREATE TABLE payments (
     payment_id      INT AUTO_INCREMENT PRIMARY KEY,
     booking_id      INT          NOT NULL,
     payment_date    DATETIME     DEFAULT CURRENT_TIMESTAMP,
-    amount          DECIMAL(10,2),
-    payment_method  VARCHAR(50), -- 'cash', 'card', 'momo', ...
-    payment_status  VARCHAR(20), -- 'paid', 'pending', 'failed'
-    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE
+    amount          DECIMAL(10,2) NOT NULL,
+    payment_method  ENUM('cash', 'card', 'momo') NOT NULL,
+    payment_status  ENUM('paid', 'pending', 'failed') NOT NULL DEFAULT 'pending',
+    -- Giữ lại chứng từ thanh toán ngay cả khi booking bị xóa
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE RESTRICT
 );
 
 -- 10. Bảng sản phẩm đồ ăn (products)
 CREATE TABLE products (
     product_id      INT AUTO_INCREMENT PRIMARY KEY,
-    product_name    VARCHAR(100),
-    price           DECIMAL(10,2),
-    stock_quantity  INT
+    product_name    VARCHAR(100) NOT NULL,
+    price           DECIMAL(10,2) NOT NULL,
+    stock_quantity  INT DEFAULT 0
 );
 
 -- 11. Bảng hóa đơn đồ ăn (food_orders)
@@ -110,7 +113,7 @@ CREATE TABLE food_orders (
     order_id      INT AUTO_INCREMENT PRIMARY KEY,
     customer_id   INT,
     order_date    DATETIME     DEFAULT CURRENT_TIMESTAMP,
-    total_amount  DECIMAL(10,2),
+    total_amount  DECIMAL(10,2) DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE SET NULL
 );
 
@@ -118,13 +121,14 @@ CREATE TABLE food_orders (
 CREATE TABLE food_order_details (
     order_id    INT,
     product_id  INT,
-    quantity    INT,
-    unit_price  DECIMAL(10,2),
+    quantity    INT NOT NULL DEFAULT 1,
+    unit_price  DECIMAL(10,2) NOT NULL,
     PRIMARY KEY (order_id, product_id),
     FOREIGN KEY (order_id)   REFERENCES food_orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id)  ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES products(product_id)  ON DELETE RESTRICT
 );
 
+-- ==================== DỮ LIỆU MẪU ====================
 
 -- Movies
 INSERT INTO movies (title, genre, duration, director, actors, release_date, description, poster) VALUES
@@ -145,13 +149,16 @@ INSERT INTO seats (room_id, seat_number, seat_type) VALUES
 -- Customers
 INSERT INTO customers (full_name, phone, email, password, points) VALUES
 ('Nguyễn Văn An', '0901234567', 'an.nguyen@email.com', 'hashed_pw_1', 100),
-('Trần Thị Bình',  '0912345678', 'binh.tran@email.com', 'hashed_pw_2', 50);
+('Trần Thị Bình', '0912345678', 'binh.tran@email.com', 'hashed_pw_2', 50);
 
 -- Employees
-INSERT INTO employees (full_name, phone, email, position) VALUES
-('Lê Văn Cường',   '0923456789', 'cuong.le@cinema.com',  'Quản lý'),
-('Phạm Thị Dung',  '0934567890', 'dung.pham@cinema.com', 'Thu ngân'),
-('Hoàng Văn Em',   '0945678901', 'em.hoang@cinema.com',  'Bảo vệ');
+-- Lưu ý: password đặt tạm 'CHANGE_ME' ngay khi tạo để tránh NULL;
+-- file seed_employee_auth.sql sẽ UPDATE lại thành hash bcrypt thật.
+INSERT INTO employees (full_name, phone, email, password, position, role) VALUES
+('Lê Văn Cường',   '0923456789', 'cuong.le@cinema.com',    'CHANGE_ME', 'Nhân viên', 'employee'),
+('Phạm Thị Dung',  '0934567890', 'dung.pham@cinema.com',   'CHANGE_ME', 'Thu ngân',  'employee'),
+('Hoàng Văn Em',   '0945678901', 'em.hoang@cinema.com',    'CHANGE_ME', 'Bảo vệ',    'employee'),
+('Mặt Trời Nhỏ',   '0956789012', 'mattroinho@cinema.com',  'CHANGE_ME', 'Admin',     'admin');
 
 -- Showtimes
 INSERT INTO showtimes (movie_id, room_id, show_date, start_time, end_time) VALUES

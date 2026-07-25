@@ -16,4 +16,10 @@ export class Employee {
 
   @Column({ length: 50, nullable: true })
   position: string;
+
+  @Column({ length: 255, nullable: true })
+  password: string;
+
+  @Column({ length: 20, default: 'employee' })
+  role: string;
 }

@@ -15,7 +15,7 @@ export default function StatsPage() {
         </div>
       </div>
       <div className="et-status">
-        Tính năng đang được phát triển 
+        Tính năng đang được phát triển.
       </div>
     </>
   );

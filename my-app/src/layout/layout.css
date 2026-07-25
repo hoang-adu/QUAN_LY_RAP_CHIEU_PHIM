@@ -47,6 +47,7 @@
   align-items: center;
   justify-content: center;
   font-size: 19px;
+  object-fit: cover;
 }
 .qlrcp-brand-text b {
   display: block;
@@ -188,6 +189,22 @@
 .qlrcp-user-role {
   font-size: 10.5px;
   color: var(--text-grey);
+}
+.qlrcp-logout-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #b8232a;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qlrcp-logout-btn:hover {
+  background: #fdf2f3;
 }
 
 /* ---------- CONTENT ---------- */

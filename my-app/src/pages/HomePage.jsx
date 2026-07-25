@@ -47,7 +47,7 @@ export default function HomePage() {
         <div>
           <div className="page-title">Trang chủ</div>
           <div className="page-sub">
-            Tổng quan hệ thống — số liệu lấy trực tiếp từ các API thật (Câu 4)
+            Tổng quan hệ thống — số liệu 
           </div>
         </div>
       </div>

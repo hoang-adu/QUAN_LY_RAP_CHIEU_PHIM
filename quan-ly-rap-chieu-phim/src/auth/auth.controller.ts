@@ -4,6 +4,7 @@ import {
   HttpCode,
   Post,
   Request,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -29,5 +30,19 @@ export class AuthController {
   ) {
     void loginCustomerDto;
     return this.authService.login(req.user);
+  }
+
+  // Đăng nhập cho Admin/Nhân viên rạp (dùng bảng employees, không phải customers)
+  @Post('employee/login')
+  @HttpCode(200)
+  async employeeLogin(@Body() loginEmployeeDto: LoginCustomerDto) {
+    const employee = await this.authService.validateEmployee(
+      loginEmployeeDto.email,
+      loginEmployeeDto.password,
+    );
+    if (!employee) {
+      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+    }
+    return this.authService.loginEmployee(employee);
   }
 }

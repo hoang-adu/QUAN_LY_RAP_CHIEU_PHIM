@@ -3,12 +3,15 @@ import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { CustomersService } from '../customers/customers.service';
 import { Customer } from '../customers/customer.entity';
+import { EmployeesService } from '../employees/employees.service';
+import { Employee } from '../employees/employee.entity';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly customersService: CustomersService,
+    private readonly employeesService: EmployeesService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -52,6 +55,44 @@ export class AuthService {
     const payload = { email: customer.email, sub: customer.customer_id };
     return {
       access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async validateEmployee(email: string, password: string) {
+    const employee = await this.employeesService.findByEmail(email);
+    if (!employee || !employee.password) {
+      return null;
+    }
+
+    const passwordMatches = await bcrypt.compare(password, employee.password);
+    if (!passwordMatches) {
+      return null;
+    }
+
+    return this.toSafeEmployee(employee);
+  }
+
+  private toSafeEmployee(employee: Employee) {
+    return {
+      employee_id: employee.employee_id,
+      full_name: employee.full_name,
+      email: employee.email,
+      role: employee.role,
+    };
+  }
+
+  loginEmployee(
+    employee: Pick<Employee, 'employee_id' | 'email' | 'role' | 'full_name'>,
+  ) {
+    const payload = {
+      email: employee.email,
+      sub: employee.employee_id,
+      role: employee.role,
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+      role: employee.role,
+      full_name: employee.full_name,
     };
   }
 }

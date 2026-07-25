@@ -22,4 +22,7 @@ export class Employee {
 
   @Column({ length: 20, default: 'employee' })
   role: string;
+
+  @Column({ length: 50, unique: true, nullable: true })
+  username: string;
 }

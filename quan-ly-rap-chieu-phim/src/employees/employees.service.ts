@@ -35,6 +35,10 @@ export class EmployeesService {
     return this.employeeRepository.findOne({ where: { email } });
   }
 
+  async findByUsername(username: string): Promise<Employee | null> {
+    return this.employeeRepository.findOne({ where: { username } });
+  }
+
   async update(
     id: number,
     updateEmployeeDto: UpdateEmployeeDto,

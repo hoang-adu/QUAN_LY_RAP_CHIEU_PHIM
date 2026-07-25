@@ -7,7 +7,7 @@ import "./login.css";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -20,11 +20,11 @@ export default function LoginPage() {
       const res = await fetch(`${API_BASE}/auth/employee/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.message || "Email hoặc mật khẩu không đúng");
+        throw new Error(data.message || "Tài khoản hoặc mật khẩu không đúng");
       }
       saveAuth(data);
       navigate("/", { replace: true });
@@ -51,13 +51,13 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <label>Email</label>
+          <label>Tài khoản</label>
           <input
-            type="email"
+            type="text"
             required
-            placeholder="vd: cuong.le@cinema.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder="vd: admin"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
           />
 
           <label>Mật khẩu</label>
@@ -77,8 +77,8 @@ export default function LoginPage() {
         </form>
 
         <div className="login-hint">
-          Tài khoản mẫu — Admin: mattroinho@cinema.com / admin123 · Nhân
-          viên: dung.pham@cinema.com / nhanvien123
+          Tài khoản mẫu — Admin: admin / cinema@123 · Nhân viên:
+          dung.pham / nhanvien123
         </div>
       </div>
     </div>

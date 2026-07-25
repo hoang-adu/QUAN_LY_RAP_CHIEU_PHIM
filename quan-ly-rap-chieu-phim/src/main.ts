@@ -8,7 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3001',
+    // Cho phép mọi cổng localhost lúc dev (CRA có thể tự nhảy cổng nếu 3001 đã bị chiếm)
+    origin: process.env.FRONTEND_URL ?? /^http:\/\/localhost:\d+$/,
     credentials: true,
   });
 

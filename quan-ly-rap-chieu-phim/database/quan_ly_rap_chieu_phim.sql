@@ -47,8 +47,9 @@ CREATE TABLE employees (
     phone        VARCHAR(20),
     email        VARCHAR(100) NOT NULL UNIQUE,
     password     VARCHAR(255) NOT NULL,
-    position     VARCHAR(50),                 -- VD: 'Thu ngân', 'Bảo vệ', 'Nhân viên', 'Quản lý', 'Admin'
-    role         ENUM('admin', 'employee') NOT NULL DEFAULT 'employee'
+    position     VARCHAR(50),                 -- VD: 'Thu ngân', 'Bảo vệ', 'Nhân viên', 'Admin'
+    role         ENUM('admin', 'employee') NOT NULL DEFAULT 'employee',
+    username     VARCHAR(50) UNIQUE           -- Tài khoản đăng nhập (khác email), gán thật ở seed_employee_auth.sql
 );
 
 -- 6. Bảng suất chiếu (showtimes)

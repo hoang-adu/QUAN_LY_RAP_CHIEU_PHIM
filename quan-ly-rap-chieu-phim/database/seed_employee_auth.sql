@@ -1,45 +1,39 @@
-
--- Nhóm role = 'employee' -> mật khẩu: nhanvien123
+-- 1) Lê Văn Cường -> đăng nhập với quyền EMPLOYEE (chức vụ Nhân viên)
+--    Tài khoản: cuong.le / Mật khẩu: nhanvien123
 UPDATE employees
-SET password = '$2b$12$yoFuiY6Y1tEvcpeYEYUPy..rmOXzhsYNSgWDWg/62cIgqqoGkIA4W',
+SET username = 'cuong.le',
+    password = '$2b$12$yoFuiY6Y1tEvcpeYEYUPy..rmOXzhsYNSgWDWg/62cIgqqoGkIA4W',
+    role = 'employee',
+    position = 'Nhân viên'
+WHERE email = 'cuong.le@cinema.com';
+
+-- 2) Phạm Thị Dung (Thu ngân) -> đăng nhập với quyền EMPLOYEE
+--    Tài khoản: dung.pham / Mật khẩu: nhanvien123
+
+UPDATE employees
+UPDATE employees
+SET username = 'dung.pham',
+    password = '$2b$12$yoFuiY6Y1tEvcpeYEYUPy..rmOXzhsYNSgWDWg/62cIgqqoGkIA4W',
     role = 'employee'
-WHERE email IN (
-    'cuong.le@cinema.com',
-    'dung.pham@cinema.com',
-    'em.hoang@cinema.com',
-    'hoa.vu@cinema.com',
-    'khoa.dang@cinema.com',
-    'lan.bui@cinema.com',
-    'minh.ngo@cinema.com',
-    'nga.do@cinema.com',
-    'phuc.trinh@cinema.com'
-);
+WHERE email = 'dung.pham@cinema.com';
 
--- Nhóm role = 'admin' -> mật khẩu: admin123
+-- 3) Hoàng Văn Em (Bảo vệ) -> đăng nhập với quyền EMPLOYEE
+--    Tài khoản: em.hoang / Mật khẩu: nhanvien123
 UPDATE employees
-SET password = '$2b$12$/cVy9WlzM63lNrgv/sMjp.H.FeCyoasdmB/o1b5INFp2CzGxalq1e',
-    role = 'admin'
-WHERE email IN (
-    'mattroinho@cinema.com',
-    'quynh.ly@cinema.com'
-);
+SET username = 'em.hoang',
+    password = '$2b$12$yoFuiY6Y1tEvcpeYEYUPy..rmOXzhsYNSgWDWg/62cIgqqoGkIA4W',
+    role = 'employee'
+WHERE email = 'em.hoang@cinema.com';
+
+-- 4) Mặt Trời Nhỏ (Admin) -> đăng nhập với quyền ADMIN
+--    Tài khoản: admin / Mật khẩu: cinema@123
+UPDATE employees
+SET username = 'admin',
+    password = '$2b$12$/FXbgZuGo54XpDXMVu5GD.sH8xQVO6ze7aMq.4kdyy1DmJVnsxT0u',
+    role = 'admin',
+    position = 'Admin'
+WHERE email = 'mattroinho@cinema.com';
 
 -- Kiểm tra lại kết quả danh sách nhân viên & phân quyền:
-SELECT employee_id, full_name, email, position, role FROM employees;
+SELECT employee_id, full_name, username, email, position, role FROM employees;
 
--- ==========================================================
--- BẢNG TÀI KHOẢN ĐỂ TEST ĐĂNG NHẬP
--- ==========================================================
--- | Email                     | Mật khẩu     | Role     | Chức vụ   |
--- |----------------------------|--------------|----------|-----------|
--- | cuong.le@cinema.com         | nhanvien123 | employee | Nhân viên |
--- | dung.pham@cinema.com        | nhanvien123 | employee | Thu ngân  |
--- | em.hoang@cinema.com         | nhanvien123 | employee | Bảo vệ    |
--- | hoa.vu@cinema.com           | nhanvien123 | employee | Thu ngân  |
--- | khoa.dang@cinema.com        | nhanvien123 | employee | Nhân viên |
--- | lan.bui@cinema.com          | nhanvien123 | employee | Nhân viên |
--- | minh.ngo@cinema.com         | nhanvien123 | employee | Bảo vệ    |
--- | nga.do@cinema.com           | nhanvien123 | employee | Thu ngân  |
--- | phuc.trinh@cinema.com       | nhanvien123 | employee | Nhân viên |
--- | mattroinho@cinema.com       | admin123    | admin    | Admin     |
--- | quynh.ly@cinema.com         | admin123    | admin    | Quản lý   |

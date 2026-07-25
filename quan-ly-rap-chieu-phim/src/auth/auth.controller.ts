@@ -10,6 +10,7 @@ import {
 import { AuthService } from './auth.service';
 import { RegisterCustomerDto } from './dto/register-customer.dto';
 import { LoginCustomerDto } from './dto/login-customer.dto';
+import { LoginEmployeeDto } from './dto/login-employee.dto';
 import { LocalAuthGuard } from './local-auth.guard';
 
 @Controller('auth')
@@ -35,9 +36,9 @@ export class AuthController {
   // Đăng nhập cho Admin/Nhân viên rạp (dùng bảng employees, không phải customers)
   @Post('employee/login')
   @HttpCode(200)
-  async employeeLogin(@Body() loginEmployeeDto: LoginCustomerDto) {
+  async employeeLogin(@Body() loginEmployeeDto: LoginEmployeeDto) {
     const employee = await this.authService.validateEmployee(
-      loginEmployeeDto.email,
+      loginEmployeeDto.username,
       loginEmployeeDto.password,
     );
     if (!employee) {

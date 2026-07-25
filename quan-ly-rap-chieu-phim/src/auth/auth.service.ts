@@ -58,8 +58,8 @@ export class AuthService {
     };
   }
 
-  async validateEmployee(email: string, password: string) {
-    const employee = await this.employeesService.findByEmail(email);
+  async validateEmployee(username: string, password: string) {
+    const employee = await this.employeesService.findByUsername(username);
     if (!employee || !employee.password) {
       return null;
     }

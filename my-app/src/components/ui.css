@@ -1,0 +1,392 @@
+/* src/components/ui.css — style dùng chung cho toàn bộ phần CRUD/booking/stats mới thêm */
+
+/* ---------- Buttons ---------- */
+.ui-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ui-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ui-btn-primary {
+  background: var(--orange, #f0862a);
+  color: #fff;
+}
+.ui-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.ui-btn-ghost {
+  background: #fff;
+  border: 1px solid var(--border, #e3e7f1);
+  color: var(--text-dark, #1d2739);
+}
+.ui-btn-ghost:hover:not(:disabled) {
+  background: #f5f6fa;
+}
+.ui-btn-danger {
+  background: #e5484d;
+  color: #fff;
+}
+.ui-btn-danger:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.ui-btn-sm {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  border-radius: 6px;
+}
+.ui-btn-link {
+  background: none;
+  border: none;
+  color: var(--blue-link, #2457c5);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.ui-row-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* ---------- Modal ---------- */
+.ui-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 20, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.ui-modal-card {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+.ui-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border, #e3e7f1);
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
+.ui-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark, #1d2739);
+}
+.ui-modal-close {
+  border: none;
+  background: none;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--text-grey, #6b7386);
+}
+.ui-modal-body {
+  padding: 18px 20px 20px;
+}
+.ui-confirm-msg {
+  font-size: 13px;
+  color: var(--text-dark, #1d2739);
+  margin: 0 0 4px;
+}
+
+/* ---------- Form ---------- */
+.ui-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ui-field.span-2 {
+  grid-column: 1 / -1;
+}
+.ui-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dark, #1d2739);
+}
+.ui-field .req {
+  color: #e5484d;
+}
+.ui-field input,
+.ui-field select,
+.ui-field textarea {
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.8px;
+  font-family: inherit;
+  color: var(--text-dark, #1d2739);
+}
+.ui-field input:focus,
+.ui-field select:focus,
+.ui-field textarea:focus {
+  outline: 2px solid var(--navy-light, #1f3566);
+}
+.ui-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.ui-form-error {
+  background: #fdf2f3;
+  border: 1px solid #f3c6c8;
+  color: #b8232a;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.ui-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+/* ---------- Pagination ---------- */
+.ui-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid var(--border, #e3e7f1);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  font-size: 12px;
+  color: var(--text-grey, #6b7386);
+}
+.ui-pagination-btns {
+  display: flex;
+  gap: 4px;
+}
+.ui-pagination-btns button {
+  border: 1px solid var(--border, #e3e7f1);
+  background: #fff;
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  font-size: 11.5px;
+}
+.ui-pagination-btns button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ui-pagination-btns button.active {
+  background: var(--navy, #15234a);
+  color: #fff;
+  border-color: var(--navy, #15234a);
+}
+
+/* ---------- Table toolbar (search box above DataTable) ---------- */
+.ui-table-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.ui-table-search {
+  flex: 1;
+  max-width: 320px;
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+
+/* ---------- Toast ---------- */
+.toast-stack {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 2000;
+}
+.toast {
+  background: #fff;
+  border-radius: 10px;
+  padding: 11px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  font-size: 12.8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 240px;
+  cursor: pointer;
+  border-left: 4px solid var(--navy, #15234a);
+  color: var(--text-dark, #1d2739);
+}
+.toast-success {
+  border-left-color: #3b5c25;
+}
+.toast-error {
+  border-left-color: #e5484d;
+}
+.toast-info {
+  border-left-color: #2457c5;
+}
+
+/* ---------- Seat map (booking wizard) ---------- */
+.seat-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 8px;
+  max-width: 560px;
+}
+.seat-btn {
+  border: 1px solid var(--border, #e3e7f1);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 0;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-dark, #1d2739);
+}
+.seat-btn.taken {
+  background: #f1f2f6;
+  color: #aeb3c4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.seat-btn.selected {
+  background: var(--orange, #f0862a);
+  color: #fff;
+  border-color: var(--orange, #f0862a);
+}
+.seat-btn.vip {
+  border-color: #d9a441;
+}
+.seat-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11.5px;
+  color: var(--text-grey, #6b7386);
+  margin: 10px 0 16px;
+}
+.seat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.seat-legend .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.dot.avail {
+  background: #fff;
+  border: 1px solid var(--border, #e3e7f1);
+}
+.dot.taken {
+  background: #f1f2f6;
+}
+.dot.selected {
+  background: var(--orange, #f0862a);
+}
+
+/* ---------- Stats bars (đơn giản, không cần thư viện chart) ---------- */
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 180px;
+  padding: 10px 4px 0;
+}
+.bar-chart .bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+.bar-chart .bar {
+  width: 60%;
+  background: linear-gradient(180deg, var(--orange, #f0862a), #d96f16);
+  border-radius: 6px 6px 0 0;
+  min-height: 2px;
+}
+.bar-chart .bar-label {
+  font-size: 10px;
+  color: var(--text-grey, #6b7386);
+  margin-top: 6px;
+  text-align: center;
+}
+.bar-chart .bar-value {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-dark, #1d2739);
+  margin-bottom: 4px;
+}
+
+.hbar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 70px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.hbar-track {
+  background: #eef1f8;
+  border-radius: 6px;
+  overflow: hidden;
+  height: 14px;
+}
+.hbar-fill {
+  height: 100%;
+  background: var(--navy-light, #1f3566);
+  border-radius: 6px;
+}
+
+.stat-filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+.stat-filter-row .ui-field {
+  min-width: 150px;
+}
+
+/* ---------- Print (vé / hóa đơn) ---------- */
+@media print {
+  .qlrcp-sidebar,
+  .qlrcp-topbar,
+  .page-head,
+  .ui-table-toolbar,
+  .ui-row-actions,
+  .no-print {
+    display: none !important;
+  }
+  .qlrcp-content {
+    padding: 0 !important;
+  }
+}

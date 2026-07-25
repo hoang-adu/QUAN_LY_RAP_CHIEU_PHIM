@@ -1,165 +1,102 @@
-// src/pages/RoomsPage.jsx
-import React, { useState } from "react";
+
+import React from "react";
 import useApiList from "../api/useApiList";
+import CrudSection from "../components/CrudSection";
 import { isAdmin } from "../api/auth";
-import { createItem, updateItem, removeItem } from "../api/apiClient";
-import DataTable from "./DataTable";
-import FormModal from "./FormModal";
 import "./table.css";
 
-const ROOM_FIELDS = [
-  { key: "room_name", label: "Tên phòng", required: true },
-  { key: "room_type", label: "Loại phòng" },
-  { key: "seat_count", label: "Số ghế", type: "number" },
+const ROOM_TYPE_OPTIONS = [
+  { value: "2D", label: "2D" },
+  { value: "3D", label: "3D" },
+  { value: "IMAX", label: "IMAX" },
+  { value: "Deluxe", label: "Deluxe" },
 ];
 
-const SEAT_FIELDS = [
-  { key: "room_id", label: "Thuộc phòng (ID)", type: "number", required: true },
-  { key: "seat_number", label: "Số ghế" },
-  { key: "seat_type", label: "Loại ghế" },
+const SEAT_TYPE_OPTIONS = [
+  { value: "standard", label: "Standard" },
+  { value: "vip", label: "VIP" },
+  { value: "couple", label: "Couple" },
+];
+
+const ROOM_FIELDS = [
+  { name: "room_name", label: "Tên phòng", required: true },
+  { name: "room_type", label: "Loại phòng", type: "select", options: ROOM_TYPE_OPTIONS },
+  { name: "seat_count", label: "Số ghế (dự kiến)", type: "number" },
 ];
 
 export default function RoomsPage() {
-  const admin = isAdmin();
   const rooms = useApiList("rooms");
   const seats = useApiList("seats");
+  const admin = isAdmin();
 
-  const [roomModal, setRoomModal] = useState(false);
-  const [editingRoom, setEditingRoom] = useState(null);
-  const [seatModal, setSeatModal] = useState(false);
-  const [editingSeat, setEditingSeat] = useState(null);
+  const roomOptions = rooms.rows.map((r) => ({
+    value: r.room_id,
+    label: `${r.room_name} (${r.room_type || "—"})`,
+  }));
 
-  const handleRoomSubmit = async (payload) => {
-    if (editingRoom) await updateItem("rooms", editingRoom.room_id, payload);
-    else await createItem("rooms", payload);
-    rooms.reload();
-  };
+  const roomNameById = Object.fromEntries(
+    rooms.rows.map((r) => [String(r.room_id), r.room_name]),
+  );
 
-  const handleRoomDelete = async (row) => {
-    if (!window.confirm(`Xóa phòng "${row.room_name}"?`)) return;
-    try {
-      await removeItem("rooms", row.room_id);
-      rooms.reload();
-    } catch (err) {
-      alert(err.message || "Xóa thất bại");
-    }
-  };
-
-  const handleSeatSubmit = async (payload) => {
-    if (editingSeat) await updateItem("seats", editingSeat.seat_id, payload);
-    else await createItem("seats", payload);
-    seats.reload();
-  };
-
-  const handleSeatDelete = async (row) => {
-    if (!window.confirm(`Xóa ghế "${row.seat_number || row.seat_id}"?`)) return;
-    try {
-      await removeItem("seats", row.seat_id);
-      seats.reload();
-    } catch (err) {
-      alert(err.message || "Xóa thất bại");
-    }
-  };
+  const SEAT_FIELDS = [
+    { name: "room_id", label: "Thuộc phòng", type: "select", options: roomOptions, required: true },
+    { name: "seat_number", label: "Số ghế", required: true, placeholder: "VD: A1, B2..." },
+    { name: "seat_type", label: "Loại ghế", type: "select", options: SEAT_TYPE_OPTIONS },
+  ];
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <div className="page-title">Phòng chiếu & Ghế</div>
-          <div className="page-sub">Tổng quan</div>
-        </div>
-      </div>
-
-      <div className="page-head">
-        <div className="section-title">Danh sách phòng chiếu</div>
-        {admin && (
-          <button
-            className="page-btn-add"
-            onClick={() => {
-              setEditingRoom(null);
-              setRoomModal(true);
-            }}
-          >
-            + Thêm phòng
-          </button>
-        )}
-      </div>
-      <DataTable
+      <CrudSection
+        title="Phòng chiếu"
+        subtitle="Dữ liệu thật từ API /rooms"
+        apiPath="rooms"
+        idKey="room_id"
         rows={rooms.rows}
         loading={rooms.loading}
         error={rooms.error}
-        rowKey="room_id"
+        reload={rooms.reload}
+        fields={ROOM_FIELDS}
+        canCreate={admin}
+        canEdit={admin}
+        canDelete={admin}
+        toDto={(v) => ({
+          ...v,
+          seat_count: v.seat_count === "" ? null : Number(v.seat_count),
+        })}
         columns={[
           { key: "room_id", label: "Mã phòng" },
           { key: "room_name", label: "Tên phòng" },
           { key: "room_type", label: "Loại phòng" },
           { key: "seat_count", label: "Số ghế" },
         ]}
-        onEdit={
-          admin
-            ? (row) => {
-                setEditingRoom(row);
-                setRoomModal(true);
-              }
-            : undefined
-        }
-        onDelete={admin ? handleRoomDelete : undefined}
       />
 
-      <div className="page-head">
-        <div className="section-title">Danh sách ghế</div>
-        {admin && (
-          <button
-            className="page-btn-add"
-            onClick={() => {
-              setEditingSeat(null);
-              setSeatModal(true);
-            }}
-          >
-            + Thêm ghế
-          </button>
-        )}
-      </div>
-      <DataTable
+      <div className="section-title">Ghế theo phòng</div>
+      <CrudSection
+        title="Ghế"
+        subtitle=""
+        apiPath="seats"
+        idKey="seat_id"
         rows={seats.rows}
         loading={seats.loading}
         error={seats.error}
-        rowKey="seat_id"
+        reload={seats.reload}
+        fields={SEAT_FIELDS}
+        canCreate={admin}
+        canEdit={admin}
+        canDelete={admin}
+        toDto={(v) => ({ ...v, room_id: Number(v.room_id) })}
+        searchKeys={["seat_number", "seat_type"]}
         columns={[
           { key: "seat_id", label: "Mã ghế" },
-          { key: "room_id", label: "Thuộc phòng" },
+          {
+            key: "room_id",
+            label: "Thuộc phòng",
+            render: (v) => roomNameById[String(v)] || `#${v}`,
+          },
           { key: "seat_number", label: "Số ghế" },
           { key: "seat_type", label: "Loại ghế" },
         ]}
-        onEdit={
-          admin
-            ? (row) => {
-                setEditingSeat(row);
-                setSeatModal(true);
-              }
-            : undefined
-        }
-        onDelete={admin ? handleSeatDelete : undefined}
-      />
-
-      <FormModal
-        open={roomModal}
-        title={editingRoom ? "Sửa phòng chiếu" : "Thêm phòng chiếu"}
-        fields={ROOM_FIELDS}
-        initialValues={editingRoom}
-        submitLabel={editingRoom ? "Lưu thay đổi" : "Thêm phòng"}
-        onClose={() => setRoomModal(false)}
-        onSubmit={handleRoomSubmit}
-      />
-
-      <FormModal
-        open={seatModal}
-        title={editingSeat ? "Sửa ghế" : "Thêm ghế"}
-        fields={SEAT_FIELDS}
-        initialValues={editingSeat}
-        submitLabel={editingSeat ? "Lưu thay đổi" : "Thêm ghế"}
-        onClose={() => setSeatModal(false)}
-        onSubmit={handleSeatSubmit}
       />
     </>
   );

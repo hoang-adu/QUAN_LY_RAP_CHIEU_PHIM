@@ -1,11 +1,12 @@
 // src/layout/Sidebar.jsx
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { isAdmin } from "../api/auth";
+import { isAdmin, isSecurityGuard } from "../api/auth";
 import "./layout.css";
 
 // Mỗi mục menu trỏ tới 1 route thật (xem src/App.js) — mọi trang đều gọi API thật ở Câu 4.
 // adminOnly: true -> chỉ hiển thị khi tài khoản đăng nhập có role = 'admin'
+// hideForGuard: true -> ẩn với tài khoản có chức vụ "Bảo vệ" (không cần nghiệp vụ bán hàng)
 const MENU_GROUPS = [
   {
     section: null,
@@ -22,15 +23,16 @@ const MENU_GROUPS = [
   {
     section: "Bán vé",
     items: [
-      { to: "/bookings", label: "Đặt vé & Vé", icon: "🎟️" },
-      { to: "/payments", label: "Thanh toán", icon: "💳" },
-      { to: "/products", label: "Sản phẩm & Đồ ăn", icon: "🍿" },
+      { to: "/bookings/new", label: "Bán vé mới", icon: "➕", hideForGuard: true },
+      { to: "/bookings", label: "Đặt vé & Vé", icon: "🎟️", hideForGuard: true },
+      { to: "/payments", label: "Thanh toán", icon: "💳", hideForGuard: true },
+      { to: "/products", label: "Sản phẩm & Đồ ăn", icon: "🍿", hideForGuard: true },
     ],
   },
   {
     section: "Hệ thống",
     items: [
-      { to: "/customers", label: "Khách hàng", icon: "👤" },
+      { to: "/customers", label: "Khách hàng", icon: "👤", hideForGuard: true },
       { to: "/employees", label: "Nhân viên", icon: "🧑‍💼", adminOnly: true },
       { to: "/stats", label: "Thống kê", icon: "📊", adminOnly: true },
     ],
@@ -39,6 +41,7 @@ const MENU_GROUPS = [
 
 export default function Sidebar() {
   const admin = isAdmin();
+  const guard = isSecurityGuard();
 
   return (
     <aside className="qlrcp-sidebar">
@@ -57,6 +60,7 @@ export default function Sidebar() {
             )}
             {group.items
               .filter((item) => !item.adminOnly || admin)
+              .filter((item) => !item.hideForGuard || !guard)
               .map((item) => (
                 <NavLink
                   key={item.to}

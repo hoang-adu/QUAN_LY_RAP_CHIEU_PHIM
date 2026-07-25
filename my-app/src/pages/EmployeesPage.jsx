@@ -1,102 +1,73 @@
 // src/pages/EmployeesPage.jsx
-import React, { useState } from "react";
+// Trang này chỉ Admin truy cập được (route-guard AdminRoute trong App.js),
+// nên mọi thao tác Thêm/Sửa/Xóa nhân viên đều cho phép ở đây.
+import React from "react";
 import useApiList from "../api/useApiList";
-import { isAdmin } from "../api/auth";
-import { createItem, updateItem, removeItem } from "../api/apiClient";
-import DataTable from "./DataTable";
-import FormModal from "./FormModal";
+import CrudSection from "../components/CrudSection";
 import "./table.css";
 
-const EMPLOYEE_FIELDS = [
-  { key: "full_name", label: "Họ tên" },
-  { key: "phone", label: "Số điện thoại" },
-  { key: "email", label: "Email", type: "email" },
-  {
-    key: "position",
-    label: "Chức vụ",
-    type: "select",
-    options: [
-      { value: "quản lý", label: "Quản lý" },
-      { value: "thu ngân", label: "Thu ngân" },
-      { value: "bảo vệ", label: "Bảo vệ" },
-    ],
-  },
+const POSITION_OPTIONS = [
+  { value: "Nhân viên", label: "Nhân viên" },
+  { value: "Thu ngân", label: "Thu ngân" },
+  { value: "Bảo vệ", label: "Bảo vệ" },
+  { value: "Quản lý", label: "Quản lý" },
+  { value: "Admin", label: "Admin" },
 ];
 
+const ROLE_OPTIONS = [
+  { value: "employee", label: "Employee" },
+  { value: "admin", label: "Admin" },
+];
+
+const FIELDS = [
+  { name: "full_name", label: "Họ tên", required: true },
+  { name: "phone", label: "Số điện thoại" },
+  { name: "email", label: "Email", required: true, type: "email" },
+  {
+    name: "password",
+    label: "Mật khẩu",
+    type: "password",
+    required: (isEdit) => !isEdit,
+  },
+  { name: "position", label: "Chức vụ", type: "select", options: POSITION_OPTIONS },
+  { name: "role", label: "Quyền đăng nhập", type: "select", options: ROLE_OPTIONS, required: true },
+];
+
+function roleBadge(role) {
+  return (
+    <span className={"et-badge " + (role === "admin" ? "ok" : "pending")}>
+      {role === "admin" ? "Admin" : "Employee"}
+    </span>
+  );
+}
+
 export default function EmployeesPage() {
-  const admin = isAdmin();
   const { rows, loading, error, reload } = useApiList("employees");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-
-  const handleSubmit = async (payload) => {
-    if (editing) await updateItem("employees", editing.employee_id, payload);
-    else await createItem("employees", payload);
-    reload();
-  };
-
-  const handleDelete = async (row) => {
-    if (!window.confirm(`Xóa nhân viên "${row.full_name || row.employee_id}"?`)) return;
-    try {
-      await removeItem("employees", row.employee_id);
-      reload();
-    } catch (err) {
-      alert(err.message || "Xóa thất bại");
-    }
-  };
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <div className="page-title">Nhân viên</div>
-          <div className="page-sub">Tổng quan</div>
-        </div>
-        {admin && (
-          <button
-            className="page-btn-add"
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-          >
-            + Thêm nhân viên
-          </button>
-        )}
-      </div>
-
-      <DataTable
-        rows={rows}
-        loading={loading}
-        error={error}
-        rowKey="employee_id"
-        columns={[
-          { key: "employee_id", label: "Mã NV" },
-          { key: "full_name", label: "Họ tên" },
-          { key: "phone", label: "Số điện thoại" },
-          { key: "email", label: "Email" },
-          { key: "position", label: "Chức vụ" },
-        ]}
-        onEdit={
-          admin
-            ? (row) => {
-                setEditing(row);
-                setModalOpen(true);
-              }
-            : undefined
-        }
-        onDelete={admin ? handleDelete : undefined}
-      />
-
-      <FormModal
-        open={modalOpen}
-        title={editing ? "Sửa nhân viên" : "Thêm nhân viên"}
-        fields={EMPLOYEE_FIELDS}
-        initialValues={editing}
-        submitLabel={editing ? "Lưu thay đổi" : "Thêm nhân viên"}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleSubmit}
-      />
-    </>
+    <CrudSection
+      title="Nhân viên"
+      subtitle="Dữ liệu thật từ API /employees — chỉ Admin có quyền truy cập trang này"
+      apiPath="employees"
+      idKey="employee_id"
+      rows={rows}
+      loading={loading}
+      error={error}
+      reload={reload}
+      fields={FIELDS}
+      toDto={(v, isEdit) => {
+        const dto = { ...v };
+        if (isEdit && !dto.password) delete dto.password;
+        return dto;
+      }}
+      columns={[
+        { key: "employee_id", label: "Mã NV" },
+        { key: "full_name", label: "Họ tên" },
+        { key: "phone", label: "Số điện thoại" },
+        { key: "email", label: "Email" },
+        { key: "position", label: "Chức vụ" },
+        { key: "role", label: "Quyền", render: roleBadge },
+      ]}
+    />
   );
 }

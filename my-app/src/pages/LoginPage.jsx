@@ -44,6 +44,7 @@ export default function LoginPage() {
     <b><span>QUẢN LÝ RẠP CHIẾU PHIM</span></b>
   </div>
 </div>
+
         <h1>Đăng nhập</h1>
         <p className="login-sub">
           Dành cho Quản trị viên (Admin) và Nhân viên rạp
@@ -76,8 +77,8 @@ export default function LoginPage() {
         </form>
 
         <div className="login-hint">
-          Tài khoản mẫu — Admin: cuong.le@cinema.com / admin123 · Nhân viên:
-          dung.pham@cinema.com / nhanvien123
+          Tài khoản mẫu — Admin: mattroinho@cinema.com / admin123 · Nhân
+          viên: dung.pham@cinema.com / nhanvien123
         </div>
       </div>
     </div>

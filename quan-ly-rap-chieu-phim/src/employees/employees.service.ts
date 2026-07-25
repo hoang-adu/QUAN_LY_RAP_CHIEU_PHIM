@@ -31,6 +31,10 @@ export class EmployeesService {
     return employee;
   }
 
+  async findByEmail(email: string): Promise<Employee | null> {
+    return this.employeeRepository.findOne({ where: { email } });
+  }
+
   async update(
     id: number,
     updateEmployeeDto: UpdateEmployeeDto,

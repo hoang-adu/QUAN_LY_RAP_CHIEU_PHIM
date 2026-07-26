@@ -24,6 +24,12 @@ const FIELDS = [
   { name: "phone", label: "Số điện thoại" },
   { name: "email", label: "Email", required: true, type: "email" },
   {
+    name: "username",
+    label: "Tài khoản đăng nhập",
+    required: true,
+    placeholder: "vd: an.nguyen (không dấu, không khoảng trắng)",
+  },
+  {
     name: "password",
     label: "Mật khẩu",
     type: "password",
@@ -65,6 +71,7 @@ export default function EmployeesPage() {
         { key: "full_name", label: "Họ tên" },
         { key: "phone", label: "Số điện thoại" },
         { key: "email", label: "Email" },
+        { key: "username", label: "Tài khoản" },
         { key: "position", label: "Chức vụ" },
         { key: "role", label: "Quyền", render: roleBadge },
       ]}

@@ -215,6 +215,9 @@ export default function CrudSection({
                   <select
                     value={values[f.name] ?? ""}
                     onChange={(e) => setField(f.name, e.target.value)}
+                    disabled={
+                      typeof f.disabled === "function" ? f.disabled(editingRow) : f.disabled
+                    }
                   >
                     <option value="">-- Chọn --</option>
                     {(f.options || []).map((o) => (
@@ -240,6 +243,9 @@ export default function CrudSection({
                     }
                     onChange={(e) => setField(f.name, e.target.value)}
                     step={f.type === "number" ? f.step || "any" : undefined}
+                    disabled={
+                      typeof f.disabled === "function" ? f.disabled(editingRow) : f.disabled
+                    }
                   />
                 )}
               </div>

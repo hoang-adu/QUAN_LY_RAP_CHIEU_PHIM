@@ -3,7 +3,6 @@ import React from "react";
 import useApiList from "../api/useApiList";
 import DataTable from "./DataTable";
 import CrudSection from "../components/CrudSection";
-import { isAdmin } from "../api/auth";
 import "./table.css";
 
 const LOW_STOCK_THRESHOLD = 20;
@@ -24,7 +23,6 @@ function stockBadge(qty) {
 export default function ProductsPage() {
   const products = useApiList("products");
   const foodOrders = useApiList("food-orders");
-  const admin = isAdmin();
 
   return (
     <>
@@ -38,9 +36,6 @@ export default function ProductsPage() {
         error={products.error}
         reload={products.reload}
         fields={FIELDS}
-        canCreate={admin}
-        canEdit={admin}
-        canDelete={admin}
         toDto={(v) => ({
           ...v,
           price: v.price === "" ? null : Number(v.price),

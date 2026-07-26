@@ -3,32 +3,16 @@
 // dashboard Sidebar/Topbar của Admin/Nhân viên — khách hàng không có quyền
 // truy cập các trang quản trị).
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { getAuth, clearAuth } from "../api/auth";
-import logo from "../assects/logo-mattroinho.png";
-import "./login.css";
+import { Link } from "react-router-dom";
+import { getAuth } from "../api/auth";
+import CustomerLayout from "../layout/CustomerLayout";
 import "./customerAccount.css";
 
 export default function CustomerAccountPage() {
-  const navigate = useNavigate();
   const auth = getAuth();
 
-  function handleLogout() {
-    clearAuth();
-    navigate("/login", { replace: true });
-  }
-
   return (
-    <div className="login-page">
-      <header className="login-header">
-        <div className="login-header__inner">
-          <div className="login-header__brand">
-            <img src={logo} alt="Logo" />
-            <span>RẠP PHIM MẶT TRỜI NHỎ</span>
-          </div>
-        </div>
-      </header>
-
+    <CustomerLayout>
       <div className="account-page">
         <div className="account-card">
           <div className="account-avatar">
@@ -52,11 +36,11 @@ export default function CustomerAccountPage() {
             </div>
           </div>
 
-          <button className="login-submit" onClick={handleLogout}>
-            Đăng xuất
-          </button>
+          <Link to="/book" className="login-submit account-book-link">
+            🎬 Đặt vé xem phim
+          </Link>
         </div>
       </div>
-    </div>
+    </CustomerLayout>
   );
 }

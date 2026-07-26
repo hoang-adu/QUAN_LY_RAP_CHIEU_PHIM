@@ -1,0 +1,32 @@
+/* src/pages/customerBooking.css */
+
+.cb-page {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px 28px;
+  max-width: 1100px;
+  margin: 0 auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.cb-movie-card {
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.cb-movie-card:hover {
+  border-color: #f0862a;
+}
+
+.cb-movie-card.selected {
+  border-color: #e50914;
+  box-shadow: 0 0 0 1px #e50914;
+}
+
+.cb-showtime-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}

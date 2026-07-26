@@ -36,7 +36,15 @@ const FIELDS = [
     required: (isEdit) => !isEdit,
   },
   { name: "position", label: "Chức vụ", type: "select", options: POSITION_OPTIONS },
-  { name: "role", label: "Quyền đăng nhập", type: "select", options: ROLE_OPTIONS, required: true },
+  {
+    name: "role",
+    label: "Quyền đăng nhập",
+    type: "select",
+    options: ROLE_OPTIONS,
+    required: true,
+    // Admin có toàn bộ quyền và không thể bị đổi thành employee qua giao diện.
+    disabled: (row) => row?.role === "admin",
+  },
 ];
 
 function roleBadge(role) {

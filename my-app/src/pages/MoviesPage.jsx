@@ -3,7 +3,6 @@
 import React from "react";
 import useApiList from "../api/useApiList";
 import CrudSection from "../components/CrudSection";
-import { isAdmin } from "../api/auth";
 import "./table.css";
 
 function formatDate(iso) {
@@ -26,7 +25,6 @@ const FIELDS = [
 
 export default function MoviesPage() {
   const { rows, loading, error, reload } = useApiList("movies");
-  const admin = isAdmin();
 
   return (
     <CrudSection
@@ -39,9 +37,6 @@ export default function MoviesPage() {
       error={error}
       reload={reload}
       fields={FIELDS}
-      canCreate={admin}
-      canEdit={admin}
-      canDelete={admin}
       toDto={(v) => ({
         ...v,
         duration: v.duration === "" ? null : Number(v.duration),

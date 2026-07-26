@@ -10,6 +10,7 @@ import { ToastProvider } from "./components/ToastContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import CustomerAccountPage from "./pages/CustomerAccountPage";
+import CustomerBookingPage from "./pages/CustomerBookingPage";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import RoomsPage from "./pages/RoomsPage";
@@ -31,12 +32,20 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
-          {/* Trang tài khoản khách hàng — cũng không dùng dashboard Admin */}
+          {/* Trang tài khoản + đặt vé online của khách hàng — cũng không dùng dashboard Admin */}
           <Route
             path="/account"
             element={
               <CustomerRoute>
                 <CustomerAccountPage />
+              </CustomerRoute>
+            }
+          />
+          <Route
+            path="/book"
+            element={
+              <CustomerRoute>
+                <CustomerBookingPage />
               </CustomerRoute>
             }
           />

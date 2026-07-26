@@ -2,7 +2,6 @@
 import React from "react";
 import useApiList from "../api/useApiList";
 import CrudSection from "../components/CrudSection";
-import { isAdmin } from "../api/auth";
 import "./table.css";
 
 const FIELDS = [
@@ -20,7 +19,6 @@ const FIELDS = [
 
 export default function CustomersPage() {
   const { rows, loading, error, reload } = useApiList("customers");
-  const admin = isAdmin();
 
   return (
     <CrudSection
@@ -33,9 +31,6 @@ export default function CustomersPage() {
       error={error}
       reload={reload}
       fields={FIELDS}
-      canCreate
-      canEdit
-      canDelete={admin}
       toDto={(v, isEdit) => {
         const dto = { ...v, points: v.points === "" ? 0 : Number(v.points) };
         if (isEdit && !dto.password) delete dto.password; // không đổi mật khẩu nếu để trống

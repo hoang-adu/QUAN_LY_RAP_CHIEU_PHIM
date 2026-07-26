@@ -1,0 +1,71 @@
+/* src/pages/customerAccount.css */
+
+.account-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f5f8;
+  padding: 40px 16px;
+}
+
+.account-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+}
+
+.account-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e50914;
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.account-card h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #222222;
+}
+
+.account-sub {
+  margin: 0 0 24px;
+  font-size: 13px;
+  color: #888888;
+}
+
+.account-info {
+  text-align: left;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: 16px 0;
+  margin-bottom: 24px;
+}
+
+.account-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13.5px;
+}
+
+.account-info-row span {
+  color: #888888;
+}
+
+.account-info-row strong {
+  color: #222222;
+  font-weight: 600;
+}

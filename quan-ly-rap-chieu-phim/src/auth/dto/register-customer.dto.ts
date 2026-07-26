@@ -11,4 +11,8 @@ export class RegisterCustomerDto {
   @IsString()
   @IsOptional()
   full_name?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
 }

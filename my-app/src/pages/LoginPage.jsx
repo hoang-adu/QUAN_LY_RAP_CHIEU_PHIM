@@ -81,17 +81,36 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/employee/login`, {
+      // Thử đăng nhập Admin/Nhân viên trước (tài khoản dạng username)
+      const empRes = await fetch(`${API_BASE}/auth/employee/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.message || "Tài khoản hoặc mật khẩu không đúng");
+      const empData = await empRes.json().catch(() => ({}));
+      if (empRes.ok) {
+        saveAuth(empData);
+        navigate("/", { replace: true });
+        return;
       }
-      saveAuth(data);
-      navigate("/", { replace: true });
+
+      // Nếu ô "tài khoản" nhập dạng email -> thử đăng nhập Khách hàng
+      if (username.includes("@")) {
+        const custRes = await fetch(`${API_BASE}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: username, password }),
+        });
+        const custData = await custRes.json().catch(() => ({}));
+        if (custRes.ok) {
+          saveAuth(custData);
+          navigate("/account", { replace: true });
+          return;
+        }
+        throw new Error(custData.message || "Tài khoản hoặc mật khẩu không đúng");
+      }
+
+      throw new Error(empData.message || "Tài khoản hoặc mật khẩu không đúng");
     } catch (err) {
       setError(err.message);
     } finally {

@@ -4,9 +4,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./layout/DashboardLayout";
 import ProtectedRoute from "./layout/ProtectedRoute";
 import AdminRoute from "./layout/AdminRoute";
+import CustomerRoute from "./layout/CustomerRoute";
 import { ToastProvider } from "./components/ToastContext";
 
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import CustomerAccountPage from "./pages/CustomerAccountPage";
 import HomePage from "./pages/HomePage";
 import MoviesPage from "./pages/MoviesPage";
 import RoomsPage from "./pages/RoomsPage";
@@ -24,8 +27,19 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          {/* Trang đăng nhập — không bọc Sidebar/Topbar */}
+          {/* Trang đăng nhập/đăng ký — không bọc Sidebar/Topbar */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Trang tài khoản khách hàng — cũng không dùng dashboard Admin */}
+          <Route
+            path="/account"
+            element={
+              <CustomerRoute>
+                <CustomerAccountPage />
+              </CustomerRoute>
+            }
+          />
 
           {/* Mọi trang còn lại yêu cầu đã đăng nhập (Admin hoặc Nhân viên) */}
           <Route

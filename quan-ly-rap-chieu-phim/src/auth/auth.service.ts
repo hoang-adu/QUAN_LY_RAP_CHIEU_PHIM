@@ -51,10 +51,21 @@ export class AuthService {
     };
   }
 
-  login(customer: Pick<Customer, 'customer_id' | 'email'>) {
+  login(
+    customer: Pick<
+      Customer,
+      'customer_id' | 'email' | 'full_name' | 'phone' | 'points'
+    >,
+  ) {
     const payload = { email: customer.email, sub: customer.customer_id };
     return {
       access_token: this.jwtService.sign(payload),
+      role: 'customer',
+      customer_id: customer.customer_id,
+      full_name: customer.full_name,
+      email: customer.email,
+      phone: customer.phone,
+      points: customer.points,
     };
   }
 

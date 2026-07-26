@@ -26,7 +26,16 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   login(
-    @Request() req: { user: { customer_id: number; email: string } },
+    @Request()
+    req: {
+      user: {
+        customer_id: number;
+        email: string;
+        full_name: string;
+        phone: string;
+        points: number;
+      };
+    },
     @Body() loginCustomerDto: LoginCustomerDto,
   ) {
     void loginCustomerDto;

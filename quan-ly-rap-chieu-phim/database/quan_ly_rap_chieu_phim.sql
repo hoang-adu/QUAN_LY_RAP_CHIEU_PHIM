@@ -148,116 +148,70 @@ INSERT INTO movies (title, genre, duration, director, actors, release_date, desc
 ('Bố Già', 'Comedy', 128, 'Trấn Thành', 'Trấn Thành, Tuấn Trần', '2021-03-12', 'Chuyện gia đình xoay quanh ông ba Sang và con trai', 'bogia.jpg'),
 ('Đất Rừng Phương Nam', 'Adventure', 130, 'Nguyễn Quang Dũng', 'Hạo Khang, Tuấn Trần', '2023-10-13', 'Hành trình phiêu lưu của cậu bé An ở miền Tây Nam Bộ', 'datrungphuongnam.jpg');
 
--- Rooms (5 phòng, room_id 1..5)
+-- Rooms (5 phòng cố định, room_id 1..5 — không thêm/bớt phòng qua giao diện)
 INSERT INTO rooms (room_name, room_type, seat_count) VALUES
-('Phòng 1', '2D', 22),
-('Phòng 2', '3D', 20),
-('Phòng 3', 'IMAX', 25),
-('Phòng 4', '2D', 10),
-('Phòng 5', 'Deluxe', 10);
+('Phòng 1', '2D', 80),
+('Phòng 2', '2D', 80),
+('Phòng 3', '2D', 80),
+('Phòng 4', '2D', 80),
+('Phòng 5', '2D', 80);
 
--- Seats (87 ghế, seat_id 1..87)
--- Phòng 1 (room_id 1): seat_id 1..22
+-- Seats (400 ghế, seat_id 1..400 — mỗi phòng cố định 80 ghế, 8 hàng A-H x 10 ghế,
+-- không thêm/bớt/sửa từng ghế qua giao diện)
+-- Phòng 1 (room_id 1): seat_id 1..80
 INSERT INTO seats (room_id, seat_number, seat_type) VALUES
-(1, 'A1', 'standard'),
-(1, 'A2', 'standard'),
-(1, 'B1', 'vip'),
-(1, 'B2', 'vip'),
-(1, 'B3', 'vip'),
-(1, 'B4', 'vip'),
-(1, 'B5', 'vip'),
-(1, 'B6', 'vip'),
-(1, 'B7', 'vip'),
-(1, 'B8', 'vip'),
-(1, 'B9', 'vip'),
-(1, 'B10', 'vip'),
-(1, 'C1', 'standard'),
-(1, 'C2', 'standard'),
-(1, 'C3', 'standard'),
-(1, 'C4', 'standard'),
-(1, 'C5', 'standard'),
-(1, 'C6', 'standard'),
-(1, 'C7', 'standard'),
-(1, 'C8', 'standard'),
-(1, 'C9', 'standard'),
-(1, 'C10', 'standard');
+(1, 'A1', 'standard'), (1, 'A2', 'standard'), (1, 'A3', 'standard'), (1, 'A4', 'standard'), (1, 'A5', 'standard'), (1, 'A6', 'standard'), (1, 'A7', 'standard'), (1, 'A8', 'standard'), (1, 'A9', 'standard'), (1, 'A10', 'standard'),
+(1, 'B1', 'standard'), (1, 'B2', 'standard'), (1, 'B3', 'standard'), (1, 'B4', 'standard'), (1, 'B5', 'standard'), (1, 'B6', 'standard'), (1, 'B7', 'standard'), (1, 'B8', 'standard'), (1, 'B9', 'standard'), (1, 'B10', 'standard'),
+(1, 'C1', 'standard'), (1, 'C2', 'standard'), (1, 'C3', 'standard'), (1, 'C4', 'standard'), (1, 'C5', 'standard'), (1, 'C6', 'standard'), (1, 'C7', 'standard'), (1, 'C8', 'standard'), (1, 'C9', 'standard'), (1, 'C10', 'standard'),
+(1, 'D1', 'standard'), (1, 'D2', 'standard'), (1, 'D3', 'standard'), (1, 'D4', 'standard'), (1, 'D5', 'standard'), (1, 'D6', 'standard'), (1, 'D7', 'standard'), (1, 'D8', 'standard'), (1, 'D9', 'standard'), (1, 'D10', 'standard'),
+(1, 'E1', 'standard'), (1, 'E2', 'standard'), (1, 'E3', 'standard'), (1, 'E4', 'standard'), (1, 'E5', 'standard'), (1, 'E6', 'standard'), (1, 'E7', 'standard'), (1, 'E8', 'standard'), (1, 'E9', 'standard'), (1, 'E10', 'standard'),
+(1, 'F1', 'standard'), (1, 'F2', 'standard'), (1, 'F3', 'standard'), (1, 'F4', 'standard'), (1, 'F5', 'standard'), (1, 'F6', 'standard'), (1, 'F7', 'standard'), (1, 'F8', 'standard'), (1, 'F9', 'standard'), (1, 'F10', 'standard'),
+(1, 'G1', 'standard'), (1, 'G2', 'standard'), (1, 'G3', 'standard'), (1, 'G4', 'standard'), (1, 'G5', 'standard'), (1, 'G6', 'standard'), (1, 'G7', 'standard'), (1, 'G8', 'standard'), (1, 'G9', 'standard'), (1, 'G10', 'standard'),
+(1, 'H1', 'standard'), (1, 'H2', 'standard'), (1, 'H3', 'standard'), (1, 'H4', 'standard'), (1, 'H5', 'standard'), (1, 'H6', 'standard'), (1, 'H7', 'standard'), (1, 'H8', 'standard'), (1, 'H9', 'standard'), (1, 'H10', 'standard');
 
--- Phòng 2 (room_id 2): seat_id 23..42
+-- Phòng 2 (room_id 2): seat_id 81..160
 INSERT INTO seats (room_id, seat_number, seat_type) VALUES
-(2, 'A1', 'standard'),
-(2, 'A2', '3D'),
-(2, 'A3', '3D'),
-(2, 'A4', '3D'),
-(2, 'A5', '3D'),
-(2, 'A6', '3D'),
-(2, 'A7', '3D'),
-(2, 'A8', '3D'),
-(2, 'A9', '3D'),
-(2, 'A10', '3D'),
-(2, 'B1', 'couple'),
-(2, 'B2', 'couple'),
-(2, 'B3', 'couple'),
-(2, 'B4', 'couple'),
-(2, 'B5', 'couple'),
-(2, 'B6', 'couple'),
-(2, 'B7', 'couple'),
-(2, 'B8', 'couple'),
-(2, 'B9', 'couple'),
-(2, 'B10', 'couple');
+(2, 'A1', 'standard'), (2, 'A2', 'standard'), (2, 'A3', 'standard'), (2, 'A4', 'standard'), (2, 'A5', 'standard'), (2, 'A6', 'standard'), (2, 'A7', 'standard'), (2, 'A8', 'standard'), (2, 'A9', 'standard'), (2, 'A10', 'standard'),
+(2, 'B1', 'standard'), (2, 'B2', 'standard'), (2, 'B3', 'standard'), (2, 'B4', 'standard'), (2, 'B5', 'standard'), (2, 'B6', 'standard'), (2, 'B7', 'standard'), (2, 'B8', 'standard'), (2, 'B9', 'standard'), (2, 'B10', 'standard'),
+(2, 'C1', 'standard'), (2, 'C2', 'standard'), (2, 'C3', 'standard'), (2, 'C4', 'standard'), (2, 'C5', 'standard'), (2, 'C6', 'standard'), (2, 'C7', 'standard'), (2, 'C8', 'standard'), (2, 'C9', 'standard'), (2, 'C10', 'standard'),
+(2, 'D1', 'standard'), (2, 'D2', 'standard'), (2, 'D3', 'standard'), (2, 'D4', 'standard'), (2, 'D5', 'standard'), (2, 'D6', 'standard'), (2, 'D7', 'standard'), (2, 'D8', 'standard'), (2, 'D9', 'standard'), (2, 'D10', 'standard'),
+(2, 'E1', 'standard'), (2, 'E2', 'standard'), (2, 'E3', 'standard'), (2, 'E4', 'standard'), (2, 'E5', 'standard'), (2, 'E6', 'standard'), (2, 'E7', 'standard'), (2, 'E8', 'standard'), (2, 'E9', 'standard'), (2, 'E10', 'standard'),
+(2, 'F1', 'standard'), (2, 'F2', 'standard'), (2, 'F3', 'standard'), (2, 'F4', 'standard'), (2, 'F5', 'standard'), (2, 'F6', 'standard'), (2, 'F7', 'standard'), (2, 'F8', 'standard'), (2, 'F9', 'standard'), (2, 'F10', 'standard'),
+(2, 'G1', 'standard'), (2, 'G2', 'standard'), (2, 'G3', 'standard'), (2, 'G4', 'standard'), (2, 'G5', 'standard'), (2, 'G6', 'standard'), (2, 'G7', 'standard'), (2, 'G8', 'standard'), (2, 'G9', 'standard'), (2, 'G10', 'standard'),
+(2, 'H1', 'standard'), (2, 'H2', 'standard'), (2, 'H3', 'standard'), (2, 'H4', 'standard'), (2, 'H5', 'standard'), (2, 'H6', 'standard'), (2, 'H7', 'standard'), (2, 'H8', 'standard'), (2, 'H9', 'standard'), (2, 'H10', 'standard');
 
--- Phòng 3 (room_id 3): seat_id 43..67
+-- Phòng 3 (room_id 3): seat_id 161..240
 INSERT INTO seats (room_id, seat_number, seat_type) VALUES
-(3, 'A1', 'standard'),
-(3, 'A2', 'standard'),
-(3, 'A3', 'standard'),
-(3, 'A4', 'standard'),
-(3, 'A5', 'standard'),
-(3, 'A6', 'standard'),
-(3, 'A7', 'standard'),
-(3, 'A8', 'standard'),
-(3, 'A9', 'standard'),
-(3, 'A10', 'standard'),
-(3, 'B1', 'vip'),
-(3, 'B2', 'vip'),
-(3, 'B3', 'vip'),
-(3, 'B4', 'vip'),
-(3, 'B5', 'vip'),
-(3, 'B6', 'vip'),
-(3, 'B7', 'vip'),
-(3, 'B8', 'vip'),
-(3, 'B9', 'vip'),
-(3, 'B10', 'vip'),
-(3, 'C1', 'couple'),
-(3, 'C2', 'couple'),
-(3, 'C3', 'couple'),
-(3, 'C4', 'couple'),
-(3, 'C5', 'couple');
+(3, 'A1', 'standard'), (3, 'A2', 'standard'), (3, 'A3', 'standard'), (3, 'A4', 'standard'), (3, 'A5', 'standard'), (3, 'A6', 'standard'), (3, 'A7', 'standard'), (3, 'A8', 'standard'), (3, 'A9', 'standard'), (3, 'A10', 'standard'),
+(3, 'B1', 'standard'), (3, 'B2', 'standard'), (3, 'B3', 'standard'), (3, 'B4', 'standard'), (3, 'B5', 'standard'), (3, 'B6', 'standard'), (3, 'B7', 'standard'), (3, 'B8', 'standard'), (3, 'B9', 'standard'), (3, 'B10', 'standard'),
+(3, 'C1', 'standard'), (3, 'C2', 'standard'), (3, 'C3', 'standard'), (3, 'C4', 'standard'), (3, 'C5', 'standard'), (3, 'C6', 'standard'), (3, 'C7', 'standard'), (3, 'C8', 'standard'), (3, 'C9', 'standard'), (3, 'C10', 'standard'),
+(3, 'D1', 'standard'), (3, 'D2', 'standard'), (3, 'D3', 'standard'), (3, 'D4', 'standard'), (3, 'D5', 'standard'), (3, 'D6', 'standard'), (3, 'D7', 'standard'), (3, 'D8', 'standard'), (3, 'D9', 'standard'), (3, 'D10', 'standard'),
+(3, 'E1', 'standard'), (3, 'E2', 'standard'), (3, 'E3', 'standard'), (3, 'E4', 'standard'), (3, 'E5', 'standard'), (3, 'E6', 'standard'), (3, 'E7', 'standard'), (3, 'E8', 'standard'), (3, 'E9', 'standard'), (3, 'E10', 'standard'),
+(3, 'F1', 'standard'), (3, 'F2', 'standard'), (3, 'F3', 'standard'), (3, 'F4', 'standard'), (3, 'F5', 'standard'), (3, 'F6', 'standard'), (3, 'F7', 'standard'), (3, 'F8', 'standard'), (3, 'F9', 'standard'), (3, 'F10', 'standard'),
+(3, 'G1', 'standard'), (3, 'G2', 'standard'), (3, 'G3', 'standard'), (3, 'G4', 'standard'), (3, 'G5', 'standard'), (3, 'G6', 'standard'), (3, 'G7', 'standard'), (3, 'G8', 'standard'), (3, 'G9', 'standard'), (3, 'G10', 'standard'),
+(3, 'H1', 'standard'), (3, 'H2', 'standard'), (3, 'H3', 'standard'), (3, 'H4', 'standard'), (3, 'H5', 'standard'), (3, 'H6', 'standard'), (3, 'H7', 'standard'), (3, 'H8', 'standard'), (3, 'H9', 'standard'), (3, 'H10', 'standard');
 
--- Phòng 4 (room_id 4): seat_id 68..77
+-- Phòng 4 (room_id 4): seat_id 241..320
 INSERT INTO seats (room_id, seat_number, seat_type) VALUES
-(4, 'A1', 'standard'),
-(4, 'A2', 'standard'),
-(4, 'A3', 'standard'),
-(4, 'A4', 'standard'),
-(4, 'A5', 'standard'),
-(4, 'A6', 'standard'),
-(4, 'A7', 'standard'),
-(4, 'A8', 'standard'),
-(4, 'A9', 'standard'),
-(4, 'A10', 'standard');
+(4, 'A1', 'standard'), (4, 'A2', 'standard'), (4, 'A3', 'standard'), (4, 'A4', 'standard'), (4, 'A5', 'standard'), (4, 'A6', 'standard'), (4, 'A7', 'standard'), (4, 'A8', 'standard'), (4, 'A9', 'standard'), (4, 'A10', 'standard'),
+(4, 'B1', 'standard'), (4, 'B2', 'standard'), (4, 'B3', 'standard'), (4, 'B4', 'standard'), (4, 'B5', 'standard'), (4, 'B6', 'standard'), (4, 'B7', 'standard'), (4, 'B8', 'standard'), (4, 'B9', 'standard'), (4, 'B10', 'standard'),
+(4, 'C1', 'standard'), (4, 'C2', 'standard'), (4, 'C3', 'standard'), (4, 'C4', 'standard'), (4, 'C5', 'standard'), (4, 'C6', 'standard'), (4, 'C7', 'standard'), (4, 'C8', 'standard'), (4, 'C9', 'standard'), (4, 'C10', 'standard'),
+(4, 'D1', 'standard'), (4, 'D2', 'standard'), (4, 'D3', 'standard'), (4, 'D4', 'standard'), (4, 'D5', 'standard'), (4, 'D6', 'standard'), (4, 'D7', 'standard'), (4, 'D8', 'standard'), (4, 'D9', 'standard'), (4, 'D10', 'standard'),
+(4, 'E1', 'standard'), (4, 'E2', 'standard'), (4, 'E3', 'standard'), (4, 'E4', 'standard'), (4, 'E5', 'standard'), (4, 'E6', 'standard'), (4, 'E7', 'standard'), (4, 'E8', 'standard'), (4, 'E9', 'standard'), (4, 'E10', 'standard'),
+(4, 'F1', 'standard'), (4, 'F2', 'standard'), (4, 'F3', 'standard'), (4, 'F4', 'standard'), (4, 'F5', 'standard'), (4, 'F6', 'standard'), (4, 'F7', 'standard'), (4, 'F8', 'standard'), (4, 'F9', 'standard'), (4, 'F10', 'standard'),
+(4, 'G1', 'standard'), (4, 'G2', 'standard'), (4, 'G3', 'standard'), (4, 'G4', 'standard'), (4, 'G5', 'standard'), (4, 'G6', 'standard'), (4, 'G7', 'standard'), (4, 'G8', 'standard'), (4, 'G9', 'standard'), (4, 'G10', 'standard'),
+(4, 'H1', 'standard'), (4, 'H2', 'standard'), (4, 'H3', 'standard'), (4, 'H4', 'standard'), (4, 'H5', 'standard'), (4, 'H6', 'standard'), (4, 'H7', 'standard'), (4, 'H8', 'standard'), (4, 'H9', 'standard'), (4, 'H10', 'standard');
 
--- Phòng 5 (room_id 5): seat_id 78..87
+-- Phòng 5 (room_id 5): seat_id 321..400
 INSERT INTO seats (room_id, seat_number, seat_type) VALUES
-(5, 'A1', 'standard'),
-(5, 'A2', 'standard'),
-(5, 'A3', 'standard'),
-(5, 'A4', 'standard'),
-(5, 'A5', 'standard'),
-(5, 'A6', 'standard'),
-(5, 'A7', 'standard'),
-(5, 'A8', 'standard'),
-(5, 'A9', 'standard'),
-(5, 'A10', 'standard');
+(5, 'A1', 'standard'), (5, 'A2', 'standard'), (5, 'A3', 'standard'), (5, 'A4', 'standard'), (5, 'A5', 'standard'), (5, 'A6', 'standard'), (5, 'A7', 'standard'), (5, 'A8', 'standard'), (5, 'A9', 'standard'), (5, 'A10', 'standard'),
+(5, 'B1', 'standard'), (5, 'B2', 'standard'), (5, 'B3', 'standard'), (5, 'B4', 'standard'), (5, 'B5', 'standard'), (5, 'B6', 'standard'), (5, 'B7', 'standard'), (5, 'B8', 'standard'), (5, 'B9', 'standard'), (5, 'B10', 'standard'),
+(5, 'C1', 'standard'), (5, 'C2', 'standard'), (5, 'C3', 'standard'), (5, 'C4', 'standard'), (5, 'C5', 'standard'), (5, 'C6', 'standard'), (5, 'C7', 'standard'), (5, 'C8', 'standard'), (5, 'C9', 'standard'), (5, 'C10', 'standard'),
+(5, 'D1', 'standard'), (5, 'D2', 'standard'), (5, 'D3', 'standard'), (5, 'D4', 'standard'), (5, 'D5', 'standard'), (5, 'D6', 'standard'), (5, 'D7', 'standard'), (5, 'D8', 'standard'), (5, 'D9', 'standard'), (5, 'D10', 'standard'),
+(5, 'E1', 'standard'), (5, 'E2', 'standard'), (5, 'E3', 'standard'), (5, 'E4', 'standard'), (5, 'E5', 'standard'), (5, 'E6', 'standard'), (5, 'E7', 'standard'), (5, 'E8', 'standard'), (5, 'E9', 'standard'), (5, 'E10', 'standard'),
+(5, 'F1', 'standard'), (5, 'F2', 'standard'), (5, 'F3', 'standard'), (5, 'F4', 'standard'), (5, 'F5', 'standard'), (5, 'F6', 'standard'), (5, 'F7', 'standard'), (5, 'F8', 'standard'), (5, 'F9', 'standard'), (5, 'F10', 'standard'),
+(5, 'G1', 'standard'), (5, 'G2', 'standard'), (5, 'G3', 'standard'), (5, 'G4', 'standard'), (5, 'G5', 'standard'), (5, 'G6', 'standard'), (5, 'G7', 'standard'), (5, 'G8', 'standard'), (5, 'G9', 'standard'), (5, 'G10', 'standard'),
+(5, 'H1', 'standard'), (5, 'H2', 'standard'), (5, 'H3', 'standard'), (5, 'H4', 'standard'), (5, 'H5', 'standard'), (5, 'H6', 'standard'), (5, 'H7', 'standard'), (5, 'H8', 'standard'), (5, 'H9', 'standard'), (5, 'H10', 'standard');
 
 -- Customers (10 khách hàng, customer_id 1..10)
 INSERT INTO customers (full_name, phone, email, password, points) VALUES
@@ -320,23 +274,25 @@ INSERT INTO bookings (customer_id, total_amount, status) VALUES
 (10, 200000.00, 'confirmed');
 
 -- Tickets (16 vé, ticket_id 1..16)
+-- Lưu ý: seat_id đã được cập nhật lại cho khớp với dải ghế mới của từng phòng
+-- (Phòng 1: 1-80, Phòng 2: 81-160, Phòng 3: 161-240, Phòng 4: 241-320, Phòng 5: 321-400)
 INSERT INTO tickets (booking_id, showtime_id, seat_id, ticket_price) VALUES
 (1, 1, 1, 75000.00),
 (1, 1, 2, 75000.00),
-(2, 2, 23, 90000.00),
+(2, 2, 81, 90000.00),
 (3, 4, 13, 100000.00),
 (3, 4, 14, 100000.00),
-(4, 6, 25, 110000.00),
-(5, 7, 53, 150000.00),
-(5, 7, 54, 150000.00),
-(5, 7, 55, 150000.00),
-(6, 8, 78, 85000.00),
-(6, 8, 79, 85000.00),
+(4, 6, 82, 110000.00),
+(5, 7, 161, 150000.00),
+(5, 7, 162, 150000.00),
+(5, 7, 163, 150000.00),
+(6, 8, 321, 85000.00),
+(6, 8, 322, 85000.00),
 (7, 9, 15, 75000.00),
-(8, 10, 68, 100000.00),
-(8, 10, 69, 100000.00),
-(10, 12, 33, 100000.00),
-(10, 12, 34, 100000.00);
+(8, 10, 241, 100000.00),
+(8, 10, 242, 100000.00),
+(10, 12, 83, 100000.00),
+(10, 12, 84, 100000.00);
 -- (booking 9 đã hủy nên không có vé)
 
 -- Payments (10 thanh toán, payment_id 1..10)

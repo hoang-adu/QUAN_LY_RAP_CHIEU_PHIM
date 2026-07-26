@@ -15,8 +15,19 @@ function statusBadge(status) {
 
 export default function PaymentsPage() {
   const { rows, loading, error, reload } = useApiList("payments");
+  const bookings = useApiList("bookings");
+  const customers = useApiList("customers");
   const toast = useToast();
   const [updatingId, setUpdatingId] = useState(null);
+
+  const customerNameByBookingId = Object.fromEntries(
+    bookings.rows.map((b) => {
+      const customer = customers.rows.find(
+        (c) => String(c.customer_id) === String(b.customer_id),
+      );
+      return [String(b.booking_id), customer?.full_name];
+    }),
+  );
 
   async function changeStatus(row, payment_status) {
     setUpdatingId(row.payment_id);
@@ -47,6 +58,11 @@ export default function PaymentsPage() {
         columns={[
           { key: "payment_id", label: "Mã thanh toán" },
           { key: "booking_id", label: "Đơn đặt vé (ID)" },
+          {
+            key: "customer_name",
+            label: "Khách hàng",
+            render: (_v, row) => customerNameByBookingId[String(row.booking_id)] || "—",
+          },
           { key: "payment_date", label: "Ngày thanh toán" },
           {
             key: "amount",

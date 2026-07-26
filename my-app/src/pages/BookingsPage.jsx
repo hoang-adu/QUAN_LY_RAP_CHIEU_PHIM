@@ -17,8 +17,13 @@ function statusBadge(status) {
 export default function BookingsPage() {
   const bookings = useApiList("bookings");
   const tickets = useApiList("tickets");
+  const customers = useApiList("customers");
   const toast = useToast();
   const [updatingId, setUpdatingId] = useState(null);
+
+  const customerNameById = Object.fromEntries(
+    customers.rows.map((c) => [String(c.customer_id), c.full_name]),
+  );
 
   async function changeStatus(row, status) {
     setUpdatingId(row.booking_id);
@@ -57,7 +62,11 @@ export default function BookingsPage() {
         error={bookings.error}
         columns={[
           { key: "booking_id", label: "Mã đơn" },
-          { key: "customer_id", label: "Khách hàng (ID)" },
+          {
+            key: "customer_id",
+            label: "Khách hàng",
+            render: (v) => customerNameById[String(v)] || (v ? `#${v}` : "—"),
+          },
           { key: "booking_date", label: "Ngày đặt" },
           {
             key: "total_amount",

@@ -23,6 +23,11 @@ function stockBadge(qty) {
 export default function ProductsPage() {
   const products = useApiList("products");
   const foodOrders = useApiList("food-orders");
+  const customers = useApiList("customers");
+
+  const customerNameById = Object.fromEntries(
+    customers.rows.map((c) => [String(c.customer_id), c.full_name]),
+  );
 
   return (
     <>
@@ -60,7 +65,11 @@ export default function ProductsPage() {
         error={foodOrders.error}
         columns={[
           { key: "order_id", label: "Mã hóa đơn" },
-          { key: "customer_id", label: "Khách hàng (ID)" },
+          {
+            key: "customer_id",
+            label: "Khách hàng",
+            render: (v) => customerNameById[String(v)] || (v ? `#${v}` : "—"),
+          },
           { key: "order_date", label: "Ngày đặt" },
           {
             key: "total_amount",

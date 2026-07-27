@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem } from "../api/apiClient";
 import { getCustomerId } from "../api/auth";
+import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { useToast } from "../components/ToastContext";
 import CustomerLayout from "../layout/CustomerLayout";
 import "../layout/layout.css";
@@ -40,7 +41,10 @@ export default function CustomerBookingPage() {
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [submitting, setSubmitting] = useState(false);
 
-  const ticketPrice = 75000;
+  const seatById = useMemo(
+    () => Object.fromEntries(seats.rows.map((s) => [String(s.seat_id), s])),
+    [seats.rows],
+  );
 
   const showtimesForMovie = useMemo(
     () => showtimes.rows.filter((s) => String(s.movie_id) === String(movieId)),
@@ -87,7 +91,10 @@ export default function CustomerBookingPage() {
     );
   }
 
-  const total = selectedSeats.length * ticketPrice;
+  const total = selectedSeats.reduce((sum, seatId) => {
+    const seat = seatById[seatId];
+    return sum + priceForSeatType(seat?.seat_type);
+  }, 0);
 
   async function handleSubmit() {
     if (!customerId) {
@@ -109,11 +116,12 @@ export default function CustomerBookingPage() {
       const bookingId = booking.booking_id ?? booking.id;
 
       for (const seatId of selectedSeats) {
+        const seat = seatById[seatId];
         await createItem("tickets", {
           booking_id: bookingId,
           showtime_id: Number(showtimeId),
           seat_id: Number(seatId),
-          ticket_price: ticketPrice,
+          ticket_price: priceForSeatType(seat?.seat_type),
         });
       }
 
@@ -219,6 +227,11 @@ export default function CustomerBookingPage() {
                   <span><span className="dot taken" /> Đã bán</span>
                   <span><span className="dot selected" /> Đang chọn</span>
                 </div>
+                <div className="seat-legend">
+                  <span>{SEAT_TYPE_LABELS.standard} — {priceForSeatType("standard").toLocaleString("vi-VN")} đ (hàng A-C)</span>
+                  <span>{SEAT_TYPE_LABELS.vip} — {priceForSeatType("vip").toLocaleString("vi-VN")} đ (hàng D-G)</span>
+                  <span>{SEAT_TYPE_LABELS.couple} — {priceForSeatType("couple").toLocaleString("vi-VN")} đ (hàng H)</span>
+                </div>
 
                 {roomSeats.length === 0 ? (
                   <div className="et-status">Phòng chiếu này chưa được khai báo ghế.</div>
@@ -235,11 +248,12 @@ export default function CustomerBookingPage() {
                             "seat-btn" +
                             (taken ? " taken" : "") +
                             (selected ? " selected" : "") +
-                            (seat.seat_type === "vip" ? " vip" : "")
+                            (seat.seat_type === "vip" ? " vip" : "") +
+                            (seat.seat_type === "couple" ? " couple" : "")
                           }
                           disabled={taken}
                           onClick={() => toggleSeat(seat)}
-                          title={seat.seat_type}
+                          title={`${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`}
                         >
                           {seat.seat_number}
                         </button>
@@ -261,7 +275,6 @@ export default function CustomerBookingPage() {
                 <div className="et-table-wrap" style={{ padding: 16, marginBottom: 18 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                     <span>Số ghế đã chọn: <b>{selectedSeats.length}</b></span>
-                    <span>Giá vé: <b>{ticketPrice.toLocaleString("vi-VN")} đ/ghế</b></span>
                     <span>Tổng tiền: <b>{total.toLocaleString("vi-VN")} đ</b></span>
                   </div>
                 </div>

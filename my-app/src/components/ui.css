@@ -282,6 +282,14 @@
 .seat-btn.vip {
   border-color: #d9a441;
 }
+.seat-btn.couple {
+  border-color: #e5487d;
+  background: #fdf1f5;
+}
+.seat-btn.couple.selected {
+  background: var(--orange, #f0862a);
+  border-color: var(--orange, #f0862a);
+}
 .seat-legend {
   display: flex;
   gap: 16px;

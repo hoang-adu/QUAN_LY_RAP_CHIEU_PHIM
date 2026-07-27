@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem } from "../api/apiClient";
+import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
@@ -22,7 +23,6 @@ export default function NewBookingPage() {
   const [showtimeId, setShowtimeId] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [customerKw, setCustomerKw] = useState("");
-  const [ticketPrice, setTicketPrice] = useState("75000");
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [createPayment, setCreatePayment] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("cash");
@@ -36,6 +36,11 @@ export default function NewBookingPage() {
   const currentShowtime = useMemo(
     () => showtimes.rows.find((s) => String(s.showtime_id) === String(showtimeId)),
     [showtimes.rows, showtimeId],
+  );
+
+  const seatById = useMemo(
+    () => Object.fromEntries(seats.rows.map((s) => [String(s.seat_id), s])),
+    [seats.rows],
   );
 
   const roomSeats = useMemo(() => {
@@ -83,7 +88,10 @@ export default function NewBookingPage() {
     setSelectedSeats([]);
   }
 
-  const total = selectedSeats.length * (Number(ticketPrice) || 0);
+  const total = selectedSeats.reduce((sum, seatId) => {
+    const seat = seatById[seatId];
+    return sum + priceForSeatType(seat?.seat_type);
+  }, 0);
 
   async function handleSubmit() {
     if (!showtimeId) return toast.error("Vui lòng chọn suất chiếu.");
@@ -100,11 +108,12 @@ export default function NewBookingPage() {
       const bookingId = booking.booking_id ?? booking.id;
 
       for (const seatId of selectedSeats) {
+        const seat = seatById[seatId];
         await createItem("tickets", {
           booking_id: bookingId,
           showtime_id: Number(showtimeId),
           seat_id: Number(seatId),
-          ticket_price: Number(ticketPrice),
+          ticket_price: priceForSeatType(seat?.seat_type),
         });
       }
 
@@ -188,15 +197,6 @@ export default function NewBookingPage() {
                 })}
               </select>
             </div>
-
-            <div className="ui-field">
-              <label>Giá vé / ghế (đ)</label>
-              <input
-                type="number"
-                value={ticketPrice}
-                onChange={(e) => setTicketPrice(e.target.value)}
-              />
-            </div>
           </div>
 
           {showtimeId && (
@@ -206,6 +206,11 @@ export default function NewBookingPage() {
                 <span><span className="dot avail" /> Còn trống</span>
                 <span><span className="dot taken" /> Đã bán</span>
                 <span><span className="dot selected" /> Đang chọn</span>
+              </div>
+              <div className="seat-legend">
+                <span>{SEAT_TYPE_LABELS.standard} — {priceForSeatType("standard").toLocaleString("vi-VN")} đ (hàng A-C)</span>
+                <span>{SEAT_TYPE_LABELS.vip} — {priceForSeatType("vip").toLocaleString("vi-VN")} đ (hàng D-G)</span>
+                <span>{SEAT_TYPE_LABELS.couple} — {priceForSeatType("couple").toLocaleString("vi-VN")} đ (hàng H)</span>
               </div>
 
               {roomSeats.length === 0 ? (
@@ -223,11 +228,12 @@ export default function NewBookingPage() {
                           "seat-btn" +
                           (taken ? " taken" : "") +
                           (selected ? " selected" : "") +
-                          (seat.seat_type === "vip" ? " vip" : "")
+                          (seat.seat_type === "vip" ? " vip" : "") +
+                          (seat.seat_type === "couple" ? " couple" : "")
                         }
                         disabled={taken}
                         onClick={() => toggleSeat(seat)}
-                        title={seat.seat_type}
+                        title={`${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`}
                       >
                         {seat.seat_number}
                       </button>

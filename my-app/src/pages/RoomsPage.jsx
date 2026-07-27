@@ -4,6 +4,7 @@
 import React, { useMemo, useState } from "react";
 import useApiList from "../api/useApiList";
 import DataTable from "./DataTable";
+import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import "./table.css";
 
 export default function RoomsPage() {
@@ -66,7 +67,16 @@ export default function RoomsPage() {
             render: (v) => roomNameById[String(v)] || `#${v}`,
           },
           { key: "seat_number", label: "Số ghế" },
-          { key: "seat_type", label: "Loại ghế" },
+          {
+            key: "seat_type",
+            label: "Loại ghế",
+            render: (v) => SEAT_TYPE_LABELS[v] || v,
+          },
+          {
+            key: "seat_price",
+            label: "Giá vé",
+            render: (_v, row) => priceForSeatType(row.seat_type).toLocaleString("vi-VN") + " đ",
+          },
         ]}
       />
     </>

@@ -161,13 +161,6 @@ export default function LoginPage() {
               >
                 Tài Khoản
               </button>
-              <button
-                type="button"
-                className={tab === "otp" ? "active" : ""}
-                onClick={() => setTab("otp")}
-              >
-                Bằng OTP
-              </button>
             </div>
 
             {tab === "account" ? (
@@ -231,12 +224,6 @@ export default function LoginPage() {
               Quý khách chưa có tài khoản? <Link to="/register">Đăng ký tài khoản</Link>
             </div>
 
-            {/* Giữ lại phần tài khoản mẫu theo yêu cầu */}
-            <div className="login-hint">
-              <strong>Tài khoản mẫu:</strong><br />
-              Admin: admin / cinema@123<br />
-              Nhân viên: dung.pham / nhanvien123
-            </div>
           </div>
         </div>
       </div>

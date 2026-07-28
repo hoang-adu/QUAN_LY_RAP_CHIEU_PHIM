@@ -8,6 +8,11 @@ import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
 
+// Khách mua trực tiếp tại quầy không phải lúc nào cũng có tài khoản (không
+// cần password/email) — vẫn cần 1 dòng "customers" để gắn booking, nên cho
+// nhân viên tạo nhanh khách vãng lai ngay tại đây thay vì bắt buộc phải
+// chọn từ danh sách khách đã có sẵn.
+
 export default function NewBookingPage() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -27,6 +32,12 @@ export default function NewBookingPage() {
   const [createPayment, setCreatePayment] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [submitting, setSubmitting] = useState(false);
+
+  // Form tạo nhanh khách vãng lai (mua tại quầy, không cần tài khoản).
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
 
   // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn —
   // poll realtime để tránh chọn trùng ghế người khác đang thao tác dở.
@@ -100,6 +111,33 @@ export default function NewBookingPage() {
     }
   }
 
+  async function handleCreateWalkInCustomer() {
+    if (!newCustomerName.trim()) {
+      toast.error("Vui lòng nhập tên khách hàng.");
+      return;
+    }
+    setCreatingCustomer(true);
+    try {
+      // Không gửi email/password — khách vãng lai không cần tài khoản để
+      // đăng nhập, chỉ cần 1 hồ sơ để gắn với đơn đặt vé này.
+      const created = await createItem("customers", {
+        full_name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim() || undefined,
+      });
+      customers.reload();
+      setCustomerId(created.customer_id);
+      setCustomerKw("");
+      setShowNewCustomerForm(false);
+      setNewCustomerName("");
+      setNewCustomerPhone("");
+      toast.success(`Đã thêm khách hàng "${created.full_name}" và chọn cho đơn này.`);
+    } catch (err) {
+      toast.error(err.message || "Không thể tạo khách hàng mới.");
+    } finally {
+      setCreatingCustomer(false);
+    }
+  }
+
   function resetForm() {
     setSelectedSeats([]);
     // Không cần gọi release() thủ công ở đây: vé tạo thành công thì backend
@@ -118,31 +156,20 @@ export default function NewBookingPage() {
 
     setSubmitting(true);
     try {
-      const booking = await createItem("bookings", {
+      // Gọi 1 API duy nhất (tạo đơn + tạo vé cho từng ghế + thu tiền nếu
+      // chọn). Backend tự dọn sạch nếu có ghế bị người khác mua giữa
+      // chừng, không còn tình trạng "đơn mồ côi" thiếu vé/thiếu thanh toán.
+      const result = await createItem("bookings/checkout", {
         customer_id: Number(customerId),
-        total_amount: total,
-        status: "pending",
-      });
-      const bookingId = booking.booking_id ?? booking.id;
-
-      for (const seatId of selectedSeats) {
-        const seat = seatById[seatId];
-        await createItem("tickets", {
-          booking_id: bookingId,
-          showtime_id: Number(showtimeId),
+        showtime_id: Number(showtimeId),
+        seats: selectedSeats.map((seatId) => ({
           seat_id: Number(seatId),
-          ticket_price: priceForSeatType(seat?.seat_type),
-        });
-      }
-
-      if (createPayment) {
-        await createItem("payments", {
-          booking_id: bookingId,
-          amount: total,
-          payment_method: paymentMethod,
-          payment_status: "paid",
-        });
-      }
+          ticket_price: priceForSeatType(seatById[seatId]?.seat_type),
+        })),
+        pay: createPayment,
+        payment_method: paymentMethod,
+      });
+      const bookingId = result.booking?.booking_id;
 
       toast.success(`Đã tạo đơn đặt vé #${bookingId} với ${selectedSeats.length} ghế.`);
       resetForm();
@@ -274,13 +301,57 @@ export default function NewBookingPage() {
               )}
 
               <div className="section-title">Khách hàng</div>
-              <div className="ui-field" style={{ maxWidth: 380, marginBottom: 10 }}>
-                <input
-                  placeholder="🔍 Tìm theo tên, SĐT, email..."
-                  value={customerKw}
-                  onChange={(e) => setCustomerKw(e.target.value)}
-                />
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 10 }}>
+                <div className="ui-field" style={{ maxWidth: 380, marginBottom: 0, flex: 1 }}>
+                  <input
+                    placeholder="🔍 Tìm theo tên, SĐT, email..."
+                    value={customerKw}
+                    onChange={(e) => setCustomerKw(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-btn-sm"
+                  onClick={() => setShowNewCustomerForm((v) => !v)}
+                >
+                  {showNewCustomerForm ? "Hủy" : "+ Khách mới"}
+                </button>
               </div>
+
+              {showNewCustomerForm && (
+                <div className="et-table-wrap" style={{ padding: 14, marginBottom: 12 }}>
+                  <div className="page-sub" style={{ marginBottom: 8 }}>
+                    Khách mua tại quầy, không cần tài khoản — chỉ cần tên (và SĐT nếu có).
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <div className="ui-field" style={{ marginBottom: 0 }}>
+                      <label>Tên khách hàng</label>
+                      <input
+                        placeholder="Nguyễn Văn A"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                      />
+                    </div>
+                    <div className="ui-field" style={{ marginBottom: 0 }}>
+                      <label>SĐT (tùy chọn)</label>
+                      <input
+                        placeholder="09xxxxxxxx"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-primary ui-btn-sm"
+                      disabled={creatingCustomer}
+                      onClick={handleCreateWalkInCustomer}
+                    >
+                      {creatingCustomer ? "Đang thêm..." : "Thêm & chọn"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
                 {filteredCustomers.map((c) => (
                   <button
@@ -292,11 +363,13 @@ export default function NewBookingPage() {
                     }
                     onClick={() => setCustomerId(c.customer_id)}
                   >
-                    {c.full_name} · {c.phone || c.email}
+                    {c.full_name} · {c.phone || c.email || "chưa có SĐT"}
                   </button>
                 ))}
                 {customers.rows.length === 0 && (
-                  <span className="page-sub">Chưa có khách hàng nào trong hệ thống.</span>
+                  <span className="page-sub">
+                    Chưa có khách hàng nào trong hệ thống — bấm "+ Khách mới" để thêm.
+                  </span>
                 )}
               </div>
 

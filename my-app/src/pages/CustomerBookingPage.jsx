@@ -191,38 +191,26 @@ export default function CustomerBookingPage() {
 
     setSubmitting(true);
     try {
-      const booking = await createItem("bookings", {
-        customer_id: Number(customerId),
-        total_amount: total,
-        status: "pending",
-      });
-      const bookingId = booking.booking_id ?? booking.id;
-
-      const createdTickets = [];
-      for (const seatId of selectedSeats) {
-        const seat = seatById[seatId];
-        const ticket = await createItem("tickets", {
-          booking_id: bookingId,
-          showtime_id: Number(showtimeId),
+      // Gọi 1 API duy nhất — backend tạo đơn + vé cho từng ghế + thu tiền
+      // ngay trong 1 luồng, tự dọn sạch nếu có ghế bị người khác mua giữa
+      // chừng (không để lại đơn dở dang).
+      const result = await createItem("bookings/checkout", {
+        showtime_id: Number(showtimeId),
+        seats: selectedSeats.map((seatId) => ({
           seat_id: Number(seatId),
-          ticket_price: priceForSeatType(seat?.seat_type),
-        });
-        createdTickets.push(ticket);
-      }
-
-      await createItem("payments", {
-        booking_id: bookingId,
-        amount: total,
+          ticket_price: priceForSeatType(seatById[seatId]?.seat_type),
+        })),
+        pay: true,
         payment_method: paymentMethod,
-        payment_status: "paid",
       });
+      const bookingId = result.booking?.booking_id;
 
       toast.success(`Đặt vé thành công! Đơn #${bookingId} với ${selectedSeats.length} ghế.`);
       // Không chuyển trang ngay — hiện mã vé để khách chụp lại/ghi nhớ,
       // vì mã này cần đưa tại quầy để nhận vé thật.
       setSuccessInfo({
         bookingId,
-        code: createdTickets[0]?.ticket_code || null,
+        code: result.tickets?.[0]?.ticket_code || null,
         seatNumbers: selectedSeats.map((id) => seatById[id]?.seat_number).filter(Boolean),
         total,
       });

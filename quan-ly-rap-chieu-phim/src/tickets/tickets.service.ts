@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Ticket } from './ticket.entity';
+import { Payment } from '../payments/payment.entity';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { SeatLocksService, Holder } from '../seat-locks/seat-locks.service';
@@ -15,6 +16,8 @@ export class TicketsService {
   constructor(
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
     private readonly dataSource: DataSource,
     private readonly seatLocksService: SeatLocksService,
   ) {}
@@ -30,7 +33,11 @@ export class TicketsService {
   //     dù có seat-lock hay không (vd. bán tại quầy không qua bước giữ ghế).
   // Sau khi tạo vé thành công -> nhả seat-lock (nếu có) vì ghế đã bán.
   // ─────────────────────────────────────────
-  async create(dto: CreateTicketDto, holder?: Holder): Promise<Ticket> {
+  async create(
+    dto: CreateTicketDto,
+    holder?: Holder,
+    immediatePickup = false,
+  ): Promise<Ticket> {
     if (holder) {
       await this.seatLocksService.assertAvailableFor(
         dto.showtime_id,
@@ -65,7 +72,18 @@ export class TicketsService {
       }
 
       try {
-        const ticket = repo.create({ ...dto, ticket_code: ticketCode });
+        // Vé bán tại quầy được nhân viên IN VÀ ĐƯA NGAY cho khách, không có
+        // bước "cầm mã vé ra quầy nhận vé sau" như vé online -> đánh dấu
+        // is_picked_up ngay lúc tạo để không hiện nhầm "Chưa nhận" mãi mãi
+        // trong báo cáo/BookingsPage (khác với vé khách tự đặt online, luôn
+        // tạo với is_picked_up=false cho đến khi check-in tại quầy).
+        const ticket = repo.create({
+          ...dto,
+          ticket_code: ticketCode,
+          ...(immediatePickup
+            ? { is_picked_up: true, picked_up_at: new Date() }
+            : {}),
+        });
         return await repo.save(ticket);
       } catch (err) {
         // Phòng hờ: nếu vẫn lọt race condition, ràng buộc UNIQUE(showtime_id,
@@ -94,8 +112,11 @@ export class TicketsService {
   // READ ALL — Lấy danh sách tất cả vé
   // ─────────────────────────────────────────
   async findAll(): Promise<Ticket[]> {
+    // DESC: vé vừa bán/vừa đặt hiện lên ĐẦU danh sách thay vì chìm xuống
+    // cuối bảng (nhân viên bán vé xong không phải kéo tới trang cuối để
+    // xác nhận vé mới tạo).
     return this.ticketRepository.find({
-      order: { ticket_id: 'ASC' },
+      order: { ticket_id: 'DESC' },
     });
   }
 
@@ -163,7 +184,9 @@ export class TicketsService {
 
   // ─────────────────────────────────────────
   // CHECK-IN TẠI QUẦY — khách đưa mã vé, nhân viên xác nhận đã đưa vé thật.
-  // Chặn nhận 2 lần cho cùng 1 mã.
+  // Chặn nhận 2 lần cho cùng 1 mã, và CHẶN nếu đơn đặt vé chưa thanh toán
+  // thành công (payment_status khác 'paid') — dù khách đã đưa mã vé đúng,
+  // vé thật chỉ được in/đưa khi đã có thanh toán 'paid' cho đơn này.
   // ─────────────────────────────────────────
   async checkIn(code: string): Promise<Ticket[]> {
     const tickets = await this.lookupByCode(code);
@@ -175,6 +198,17 @@ export class TicketsService {
         `Mã vé "${code}" đã được nhận vé trước đó` +
           (pickedAt ? ` lúc ${new Date(pickedAt).toLocaleString('vi-VN')}` : '') +
           '.',
+      );
+    }
+
+    const bookingId = tickets[0].booking_id;
+    const paidPayment = await this.paymentRepository.findOne({
+      where: { booking_id: bookingId, payment_status: 'paid' },
+    });
+    if (!paidPayment) {
+      throw new BadRequestException(
+        `Đơn đặt vé #${bookingId} chưa có thanh toán thành công (payment_status = 'paid') — ` +
+          'không thể xác nhận đưa vé cho đến khi đơn này được thanh toán đầy đủ.',
       );
     }
 

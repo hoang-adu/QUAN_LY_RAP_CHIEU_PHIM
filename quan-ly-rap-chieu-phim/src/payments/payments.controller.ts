@@ -53,7 +53,13 @@ export class PaymentsController {
         );
       }
     }
-    return this.paymentsService.create(createPaymentDto);
+    // channel do BACKEND quyết định theo role người gọi API, không nhận từ
+    // client — nhân viên bán tại quầy = 'counter', khách tự đặt = 'online'.
+    // Đây là căn cứ để chặn sửa/hoàn tiền thanh toán online ở bước update.
+    return this.paymentsService.create({
+      ...createPaymentDto,
+      channel: isStaff ? 'counter' : 'online',
+    });
   }
 
   @UseGuards(RolesGuard)

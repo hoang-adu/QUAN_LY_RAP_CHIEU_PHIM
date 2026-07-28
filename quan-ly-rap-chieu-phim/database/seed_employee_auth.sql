@@ -167,3 +167,5 @@ WHERE email = 'phong.ho@email.com';
 SELECT customer_id, full_name, phone, email, points,
        (password LIKE '$2%') AS has_real_bcrypt_hash
 FROM customers;
+
+UPDATE employees SET role = 'admin' WHERE username = 'admin';

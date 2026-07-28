@@ -1,13 +1,22 @@
 // src/pages/TicketCheckInPage.jsx
-// Nhân viên/Admin (kể cả Bảo vệ ở cửa soát vé) nhập MÃ VÉ khách đưa tại
-// quầy -> tra cứu để xem trước thông tin (phim, suất chiếu, ghế, khách
-// hàng) -> xác nhận đã đưa vé thật. Chặn xác nhận 2 lần cho cùng 1 mã.
-import React, { useMemo, useState } from "react";
+// Nhân viên/Admin (kể cả Bảo vệ ở cửa soát vé) dùng 1 Ô TÌM KIẾM DUY NHẤT:
+// gõ vào là bảng "Đơn đã thanh toán, chờ nhận vé" bên dưới tự lọc theo
+// thời gian thực (mã đơn, mã vé, tên/SĐT khách); nếu gõ đúng mã vé và bấm
+// Enter thì tra cứu chi tiết luôn (giống bấm nút "Tra cứu" trên 1 dòng).
+// Tra cứu xong -> xác nhận đã đưa vé thật. Chặn xác nhận 2 lần cho cùng 1 mã.
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { lookupTicketsByCode, checkInByCode } from "../api/tickets";
 import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
+
+// Mẫu mã vé hệ thống sinh ra, vd. "VE-8K3F2Q" (xem
+// TicketsService.generateUniqueCode ở backend) — dùng để nhận biết khi nào
+// người dùng gõ đủ 1 mã vé thật (cho phép Enter để tra cứu chi tiết ngay)
+// thay vì chỉ đang gõ dở từ khoá lọc.
+const TICKET_CODE_RE = /^VE-[A-Z0-9]+$/i;
 
 function formatDateTime(iso) {
   if (!iso) return "—";
@@ -24,12 +33,16 @@ export default function TicketCheckInPage() {
   const seats = useApiList("seats");
   const bookings = useApiList("bookings");
   const customers = useApiList("customers");
+  const allTickets = useApiList("tickets");
+  const payments = useApiList("payments");
 
-  const [code, setCode] = useState("");
-  const [tickets, setTickets] = useState(null); // null = chưa tra cứu lần nào
+  // 1 ô search DUY NHẤT: vừa là từ khoá lọc bảng, vừa là ô nhập mã vé.
+  const [kw, setKw] = useState("");
+  const [tickets, setTickets] = useState(null); // null = chưa tra cứu chi tiết lần nào
   const [searching, setSearching] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [hidePickedUp, setHidePickedUp] = useState(true);
 
   const showtimeById = useMemo(
     () => Object.fromEntries(showtimes.rows.map((s) => [String(s.showtime_id), s])),
@@ -56,25 +69,72 @@ export default function TicketCheckInPage() {
     [customers.rows],
   );
 
-  const booking = tickets?.length ? bookingById[String(tickets[0].booking_id)] : null;
-  const customer = booking ? customerById[String(booking.customer_id)] : null;
-  const allPickedUp = !!tickets?.length && tickets.every((t) => t.is_picked_up);
-  const totalAmount = (tickets || []).reduce(
-    (sum, t) => sum + Number(t.ticket_price || 0),
-    0,
-  );
+  // Bảng "Đơn đã thanh toán, chờ nhận vé" — mỗi đơn có payment 'paid' được
+  // gộp lại 1 dòng (kèm mã vé chung, số vé đã/chưa nhận), để nhân viên
+  // duyệt/click thay vì phải gõ đúng mã vé mới tra cứu được.
+  const paidBookingRows = useMemo(() => {
+    const rows = payments.rows
+      .filter((p) => p.payment_status === "paid")
+      .map((p) => {
+        const booking = bookingById[String(p.booking_id)];
+        if (!booking) return null;
+        const bookingTickets = allTickets.rows.filter(
+          (t) => String(t.booking_id) === String(p.booking_id),
+        );
+        const customer = customerById[String(booking.customer_id)];
+        const pickedCount = bookingTickets.filter((t) => t.is_picked_up).length;
+        const totalCount = bookingTickets.length;
+        const showtime = bookingTickets[0] ? showtimeById[String(bookingTickets[0].showtime_id)] : null;
+        const movie = showtime ? movieById[String(showtime.movie_id)] : null;
+        return {
+          booking,
+          payment: p,
+          customer,
+          ticketCode: bookingTickets[0]?.ticket_code || null,
+          pickedCount,
+          totalCount,
+          movieTitle: movie?.title,
+          showtimeLabel: showtime ? `${showtime.show_date} · ${showtime.start_time?.slice(0, 5)}` : null,
+        };
+      })
+      .filter(Boolean)
+      // Mới thanh toán hiện lên đầu, khỏi phải kéo xuống cuối bảng tìm.
+      .sort((a, b) => Number(b.booking.booking_id) - Number(a.booking.booking_id));
 
-  async function handleSearch(e) {
-    e?.preventDefault();
-    const trimmed = code.trim().toUpperCase();
-    if (!trimmed) {
-      toast.error("Vui lòng nhập mã vé.");
-      return;
-    }
+    // Gõ SỐ (mã đơn hoặc SĐT) -> so khớp theo TIỀN TỐ (startsWith), không
+    // dùng "includes" — tránh việc gõ 1 chữ số lẻ như "6" khớp bừa vào giữa
+    // dãy SĐT của người khác (SĐT nào chẳng có sẵn vài chữ số 6, 7, 8...).
+    // Gõ CHỮ (tên khách, mã vé, tên phim) vẫn dùng "includes" như bình
+    // thường vì các trường này không phải chuỗi số nên ít bị khớp bừa.
+    const raw = kw.trim();
+    const q = raw.toLowerCase();
+    const isNumericQuery = /^\d+$/.test(raw);
+
+    return rows.filter((r) => {
+      if (hidePickedUp && r.totalCount > 0 && r.pickedCount >= r.totalCount) return false;
+      if (!raw) return true;
+
+      if (isNumericQuery) {
+        return (
+          String(r.booking.booking_id).startsWith(raw) ||
+          (r.customer?.phone || "").startsWith(raw)
+        );
+      }
+
+      return (
+        (r.customer?.full_name || "").toLowerCase().includes(q) ||
+        (r.ticketCode || "").toLowerCase().includes(q) ||
+        (r.movieTitle || "").toLowerCase().includes(q)
+      );
+    });
+  }, [payments.rows, bookingById, allTickets.rows, customerById, showtimeById, movieById, kw, hidePickedUp]);
+
+  async function loadByTicketCode(ticketCode) {
+    if (!ticketCode) return;
     setSearching(true);
     setNotFound(false);
     try {
-      const result = await lookupTicketsByCode(trimmed);
+      const result = await lookupTicketsByCode(ticketCode);
       setTickets(result);
     } catch (err) {
       setTickets(null);
@@ -85,13 +145,67 @@ export default function TicketCheckInPage() {
     }
   }
 
+  // Vào trang qua ô search ở Topbar (vd. /tickets/checkin?code=VE-8K3F2Q)
+  // -> tự điền vào ô search và tra cứu chi tiết ngay.
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const codeParam = searchParams.get("code");
+    if (codeParam) {
+      setKw(codeParam);
+      loadByTicketCode(codeParam);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const booking = tickets?.length ? bookingById[String(tickets[0].booking_id)] : null;
+  const customer = booking ? customerById[String(booking.customer_id)] : null;
+  const allPickedUp = !!tickets?.length && tickets.every((t) => t.is_picked_up);
+  const totalAmount = (tickets || []).reduce(
+    (sum, t) => sum + Number(t.ticket_price || 0),
+    0,
+  );
+
+  // Đơn chỉ được coi là "đã thanh toán" khi có ít nhất 1 bản ghi payments
+  // với payment_status = 'paid' cho đúng booking_id này — khớp với điều
+  // kiện backend đang chặn ở tickets.service.ts#checkIn().
+  const bookingPayment = booking
+    ? payments.rows.find((p) => String(p.booking_id) === String(booking.booking_id))
+    : null;
+  const isPaid = booking
+    ? payments.rows.some(
+        (p) => String(p.booking_id) === String(booking.booking_id) && p.payment_status === "paid",
+      )
+    : false;
+
+  // Gõ vào ô search luôn lọc bảng theo thời gian thực (qua state `kw` ở
+  // trên). Chỉ khi bấm Enter/nút VÀ nội dung gõ đúng định dạng 1 mã vé thật
+  // thì mới tra cứu chi tiết — tránh tra cứu nhầm khi người dùng chỉ đang
+  // gõ dở tên khách hàng hoặc mã đơn để lọc bảng.
+  function handleSubmit(e) {
+    e?.preventDefault();
+    const trimmed = kw.trim().toUpperCase();
+    if (!trimmed) {
+      toast.error("Vui lòng nhập mã vé, mã đơn hoặc tên khách để tìm.");
+      return;
+    }
+    if (!TICKET_CODE_RE.test(trimmed)) {
+      toast.error(
+        "Đây chưa phải mã vé đầy đủ (vd. VE-8K3F2Q) — bảng bên dưới đã lọc theo từ khoá này, " +
+          'bấm "Tra cứu" trên đúng dòng cần nhận vé.',
+      );
+      return;
+    }
+    loadByTicketCode(trimmed);
+  }
+
   async function handleConfirm() {
-    const trimmed = code.trim().toUpperCase();
+    const ticketCode = tickets?.[0]?.ticket_code;
+    if (!ticketCode) return;
     setConfirming(true);
     try {
-      const result = await checkInByCode(trimmed);
+      const result = await checkInByCode(ticketCode);
       setTickets(result);
-      toast.success(`Đã xác nhận đưa vé cho mã "${trimmed}" (${result.length} ghế).`);
+      toast.success(`Đã xác nhận đưa vé cho mã "${ticketCode}" (${result.length} ghế).`);
     } catch (err) {
       toast.error(err.message || "Xác nhận thất bại.");
     } finally {
@@ -105,28 +219,110 @@ export default function TicketCheckInPage() {
         <div>
           <div className="page-title">Nhận vé tại quầy</div>
           <div className="page-sub">
-            Nhập mã vé khách đưa (vé đặt online) để tra cứu và xác nhận đã đưa vé thật
+            Tìm đơn theo mã đơn/mã vé/tên khách, hoặc nhập đủ mã vé rồi Enter để tra cứu và xác nhận đã đưa vé thật
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSearch} style={{ display: "flex", gap: 10, maxWidth: 420, marginBottom: 20 }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", gap: 10, maxWidth: 480, marginBottom: 10 }}>
         <div className="ui-field" style={{ flex: 1, marginBottom: 0 }}>
           <input
-            placeholder="Nhập mã vé, vd. VE-8K3F2Q"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            style={{ textTransform: "uppercase" }}
+            placeholder="🔍 Mã đơn, mã vé (VE-8K3F2Q), tên phim, tên hoặc SĐT khách..."
+            value={kw}
+            onChange={(e) => setKw(e.target.value)}
           />
         </div>
         <button className="ui-btn ui-btn-primary" type="submit" disabled={searching}>
-          {searching ? "Đang tra cứu..." : "Tra cứu"}
+          {searching ? "Đang tra..." : "Tra cứu"}
         </button>
       </form>
+
+      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, marginBottom: 14 }}>
+        <input
+          type="checkbox"
+          checked={hidePickedUp}
+          onChange={(e) => setHidePickedUp(e.target.checked)}
+        />
+        Chỉ hiện đơn chưa nhận vé
+      </label>
 
       {notFound && (
         <div className="et-status">Không tìm thấy vé nào với mã vé này. Kiểm tra lại mã (không phân biệt hoa/thường).</div>
       )}
+
+      <div className="section-title">Đơn đã thanh toán, chờ nhận vé</div>
+      <div className="et-table-wrap" style={{ marginBottom: 20 }}>
+        <table className="et-table">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Mã vé</th>
+              <th>Khách hàng</th>
+              <th>Phim / Suất chiếu</th>
+              <th>Số vé</th>
+              <th>Trạng thái nhận vé</th>
+              <th style={{ width: 1 }}>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paidBookingRows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="et-status">
+                  {kw
+                    ? "Không tìm thấy đơn nào khớp."
+                    : hidePickedUp
+                      ? "Không còn đơn nào chờ nhận vé."
+                      : "Chưa có đơn nào đã thanh toán."}
+                </td>
+              </tr>
+            )}
+            {paidBookingRows.map((r) => {
+              const fullyPicked = r.totalCount > 0 && r.pickedCount >= r.totalCount;
+              return (
+                <tr key={r.booking.booking_id}>
+                  <td>#{r.booking.booking_id}</td>
+                  <td>{r.ticketCode || "—"}</td>
+                  <td>
+                    {r.customer?.full_name || "—"}
+                    {r.customer?.phone ? ` · ${r.customer.phone}` : ""}
+                  </td>
+                  <td>
+                    {r.movieTitle || "—"}
+                    {r.showtimeLabel ? (
+                      <div className="page-sub" style={{ margin: 0 }}>{r.showtimeLabel}</div>
+                    ) : null}
+                  </td>
+                  <td>{r.totalCount}</td>
+                  <td>
+                    {fullyPicked ? (
+                      <span className="et-badge ok">Đã nhận đủ</span>
+                    ) : r.pickedCount > 0 ? (
+                      <span className="et-badge pending">
+                        Đã nhận {r.pickedCount}/{r.totalCount}
+                      </span>
+                    ) : (
+                      <span className="et-badge pending">Chưa nhận</span>
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-ghost ui-btn-sm"
+                      disabled={!r.ticketCode || searching}
+                      onClick={() => {
+                        setKw(r.ticketCode);
+                        loadByTicketCode(r.ticketCode);
+                      }}
+                    >
+                      Tra cứu
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {tickets && tickets.length > 0 && (
         <div className="et-table-wrap" style={{ padding: 18, marginBottom: 18 }}>
@@ -137,7 +333,16 @@ export default function TicketCheckInPage() {
             </div>
             <div style={{ textAlign: "right" }}>
               <div><b>Tổng tiền:</b> {totalAmount.toLocaleString("vi-VN")} đ</div>
-              <div>
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 4 }}>
+                {isPaid ? (
+                  <span className="et-badge ok">Đã thanh toán</span>
+                ) : (
+                  <span className="et-badge pending">
+                    {bookingPayment
+                      ? `Thanh toán: ${bookingPayment.payment_status}`
+                      : "Chưa có thanh toán"}
+                  </span>
+                )}
                 {allPickedUp ? (
                   <span className="et-badge ok">
                     Đã nhận vé lúc {formatDateTime(tickets[0].picked_up_at)}
@@ -148,6 +353,13 @@ export default function TicketCheckInPage() {
               </div>
             </div>
           </div>
+
+          {!isPaid && !allPickedUp && (
+            <div className="et-status et-error" style={{ marginBottom: 12 }}>
+              Đơn đặt vé này chưa thanh toán thành công nên <b>không thể xác nhận đưa vé</b>.
+              Yêu cầu khách thanh toán trước (hoặc kiểm tra lại ở trang Thanh toán) rồi tra cứu lại mã vé.
+            </div>
+          )}
 
           <table className="et-table">
             <thead>
@@ -195,14 +407,17 @@ export default function TicketCheckInPage() {
           <div style={{ marginTop: 16 }}>
             <button
               className="ui-btn ui-btn-primary"
-              disabled={confirming || allPickedUp}
+              disabled={confirming || allPickedUp || !isPaid}
               onClick={handleConfirm}
+              title={!isPaid && !allPickedUp ? "Đơn chưa thanh toán — không thể xác nhận" : undefined}
             >
               {allPickedUp
                 ? "Đã xác nhận đưa vé"
-                : confirming
-                  ? "Đang xác nhận..."
-                  : `Xác nhận đã đưa vé (${tickets.length} ghế)`}
+                : !isPaid
+                  ? "Chưa thanh toán — không thể xác nhận"
+                  : confirming
+                    ? "Đang xác nhận..."
+                    : `Xác nhận đã đưa vé (${tickets.length} ghế)`}
             </button>
           </div>
         </div>

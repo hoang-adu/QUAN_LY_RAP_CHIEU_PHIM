@@ -58,7 +58,9 @@ export class TicketsController {
     const holder = isStaff
       ? ({ holder_type: 'employee', holder_id: user.employee_id as number } as const)
       : ({ holder_type: 'customer', holder_id: user.customer_id as number } as const);
-    return this.ticketsService.create(dto, holder);
+    // Vé do nhân viên/admin tạo (bán tại quầy) coi như đưa vé thật ngay,
+    // không cần bước "nhận vé" riêng như vé khách tự đặt online.
+    return this.ticketsService.create(dto, holder, isStaff);
   }
 
   // ─────────────────────────────────────────

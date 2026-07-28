@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('tickets')
 export class Ticket {
@@ -22,10 +22,8 @@ export class Ticket {
   })
   ticket_price: number;
 
-  // Mã vé — khách đặt online đưa mã này tại quầy để nhân viên đối chiếu và
-  // đưa vé thật. Mọi vé thuộc CÙNG 1 booking (đặt nhiều ghế 1 lần) dùng
-  // CHUNG 1 mã, để khách chỉ cần đưa 1 mã là nhận đủ vé cho tất cả ghế.
-  @Column({ length: 20, unique: true, nullable: true })
+  @Index()
+  @Column({ length: 20, nullable: true })
   ticket_code: string;
 
   // Đã được nhận vé thật tại quầy hay chưa (đối với vé đặt online).

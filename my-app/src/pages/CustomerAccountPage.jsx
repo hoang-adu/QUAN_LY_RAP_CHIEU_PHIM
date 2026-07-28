@@ -1,7 +1,8 @@
 // src/pages/CustomerAccountPage.jsx
 // Trang tài khoản dành cho khách hàng sau khi đăng nhập (không dùng chung
 // dashboard Sidebar/Topbar của Admin/Nhân viên — khách hàng không có quyền
-// truy cập các trang quản trị).
+// truy cập các trang quản trị). Giao diện thiết kế lại theo phong cách
+// CGV / Lotte Cinema: thẻ thành viên bên trái, danh sách vé dạng "vé xé".
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { getAuth } from "../api/auth";
@@ -72,88 +73,110 @@ export default function CustomerAccountPage() {
       .sort((a, b) => (b.tickets[0]?.ticket_id || 0) - (a.tickets[0]?.ticket_id || 0));
   }, [tickets.rows, myBookingIds]);
 
+  const upcomingCount = ticketGroups.filter((g) => !g.tickets.every((t) => t.is_picked_up)).length;
+
   const busy =
     tickets.loading || bookings.loading || movies.loading || showtimes.loading ||
     rooms.loading || seats.loading;
 
   return (
     <CustomerLayout>
-      <div className="account-page">
-        <div className="account-card">
-          <div className="account-avatar">
+      <div className="ac-wrap">
+        {/* Thẻ thành viên */}
+        <div className="ac-membercard">
+          <div className="ac-membercard__top">
+            <span className="ac-membercard__brand">RẠP PHIM MẶT TRỜI NHỎ</span>
+            <span className="ac-membercard__tier">THÀNH VIÊN</span>
+          </div>
+          <div className="ac-membercard__avatar">
             {(auth?.full_name || "?").charAt(0).toUpperCase()}
           </div>
-          <h2>{auth?.full_name || "Khách hàng"}</h2>
-          <p className="account-sub">Tài khoản khách hàng</p>
-
-          <div className="account-info">
-            <div className="account-info-row">
+          <div className="ac-membercard__name">{auth?.full_name || "Khách hàng"}</div>
+          <div className="ac-membercard__points">
+            <span>⭐ Điểm tích lũy</span>
+            <strong>{auth?.points ?? 0}</strong>
+          </div>
+          <div className="ac-membercard__grid">
+            <div>
               <span>Email</span>
               <strong>{auth?.email || "—"}</strong>
             </div>
-            <div className="account-info-row">
+            <div>
               <span>Số điện thoại</span>
               <strong>{auth?.phone || "—"}</strong>
             </div>
-            <div className="account-info-row">
-              <span>Điểm tích lũy</span>
-              <strong>{auth?.points ?? 0}</strong>
-            </div>
           </div>
-
-          <Link to="/book" className="login-submit account-book-link">
+          <Link to="/book" className="ac-membercard__cta">
             🎬 Đặt vé xem phim
           </Link>
         </div>
 
-        <div className="account-card" style={{ marginTop: 20, textAlign: "left" }}>
-          <h3 style={{ marginBottom: 12 }}>Vé của tôi</h3>
+        {/* Danh sách vé */}
+        <div className="ac-tickets">
+          <div className="ac-tickets__head">
+            <h3>Vé của tôi</h3>
+            {upcomingCount > 0 && <span className="ac-badge">{upcomingCount} vé chưa nhận</span>}
+          </div>
+
           {busy ? (
-            <div className="account-info-row">
-              <span>Đang tải...</span>
-            </div>
+            <div className="ac-empty">Đang tải danh sách vé...</div>
           ) : ticketGroups.length === 0 ? (
-            <div className="account-info-row">
-              <span>Bạn chưa đặt vé nào.</span>
+            <div className="ac-empty">
+              <span className="ac-empty__icon">🎟️</span>
+              Bạn chưa đặt vé nào.
+              <Link to="/book">Đặt vé ngay</Link>
             </div>
           ) : (
-            ticketGroups.map((group) => {
-              const pickedUp = group.tickets.every((t) => t.is_picked_up);
-              const pickedAt = formatDateTime(group.tickets[0]?.picked_up_at);
-              const totalPrice = group.tickets.reduce(
-                (sum, t) => sum + Number(t.ticket_price || 0),
-                0,
-              );
+            <div className="ac-ticket-list">
+              {ticketGroups.map((group) => {
+                const pickedUp = group.tickets.every((t) => t.is_picked_up);
+                const pickedAt = formatDateTime(group.tickets[0]?.picked_up_at);
+                const totalPrice = group.tickets.reduce(
+                  (sum, t) => sum + Number(t.ticket_price || 0),
+                  0,
+                );
 
-              // Mỗi mã vé chỉ ứng với 1 suất chiếu (khách chọn ghế cho 1
-              // suất rồi mới thanh toán) -> lấy suất chiếu từ vé đầu tiên.
-              const firstShowtime = showtimeById[String(group.tickets[0]?.showtime_id)];
-              const movie = firstShowtime ? movieById[String(firstShowtime.movie_id)] : null;
-              const room = firstShowtime ? roomById[String(firstShowtime.room_id)] : null;
-              const seatNumbers = group.tickets
-                .map((t) => seatById[String(t.seat_id)]?.seat_number)
-                .filter(Boolean)
-                .sort();
+                // Mỗi mã vé chỉ ứng với 1 suất chiếu (khách chọn ghế cho 1
+                // suất rồi mới thanh toán) -> lấy suất chiếu từ vé đầu tiên.
+                const firstShowtime = showtimeById[String(group.tickets[0]?.showtime_id)];
+                const movie = firstShowtime ? movieById[String(firstShowtime.movie_id)] : null;
+                const room = firstShowtime ? roomById[String(firstShowtime.room_id)] : null;
+                const seatNumbers = group.tickets
+                  .map((t) => seatById[String(t.seat_id)]?.seat_number)
+                  .filter(Boolean)
+                  .sort();
 
-              return (
-                <div
-                  key={group.code}
-                  className="account-info-row"
-                  style={{ flexDirection: "column", alignItems: "flex-start", gap: 4, padding: "12px 0" }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
-                    <strong>{movie?.title || "Phim #" + (firstShowtime?.movie_id ?? "?")}</strong>
-                    <span>{pickedUp ? `✅ Đã nhận vé${pickedAt ? " lúc " + pickedAt : ""}` : "⏳ Chưa nhận vé tại quầy"}</span>
+                return (
+                  <div className={"ac-ticket" + (pickedUp ? " picked" : "")} key={group.code}>
+                    <div className="ac-ticket__main">
+                      <div className="ac-ticket__poster">🎬</div>
+                      <div className="ac-ticket__body">
+                        <div className="ac-ticket__title-row">
+                          <strong>{movie?.title || "Phim #" + (firstShowtime?.movie_id ?? "?")}</strong>
+                          <span className={"ac-status" + (pickedUp ? " picked" : "")}>
+                            {pickedUp ? "✅ Đã nhận vé" : "⏳ Chưa nhận"}
+                          </span>
+                        </div>
+                        <div className="ac-ticket__meta">
+                          🕒 {firstShowtime ? `${formatDate(firstShowtime.show_date)} · ${firstShowtime.start_time?.slice(0, 5)}` : "—"}
+                          {"  ·  "}🏛️ {room?.room_name || (firstShowtime ? `Phòng #${firstShowtime.room_id}` : "—")}
+                        </div>
+                        <div className="ac-ticket__meta">💺 Ghế: {seatNumbers.join(", ") || "—"}</div>
+                        {pickedUp && pickedAt && (
+                          <div className="ac-ticket__meta">Đã nhận lúc {pickedAt}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ac-ticket__stub">
+                      <div className="ac-ticket__code-label">Mã vé</div>
+                      <div className="ac-ticket__code">{group.tickets[0]?.ticket_code || "—"}</div>
+                      <div className="ac-ticket__order">Đơn #{group.tickets[0]?.booking_id}</div>
+                      <div className="ac-ticket__price">{totalPrice.toLocaleString("vi-VN")} đ</div>
+                    </div>
                   </div>
-                  <span>
-                    🕒 {firstShowtime ? `${formatDate(firstShowtime.show_date)} · ${firstShowtime.start_time?.slice(0, 5)}` : "—"}
-                    {" · "}🏛️ {room?.room_name || (firstShowtime ? `Phòng #${firstShowtime.room_id}` : "—")}
-                  </span>
-                  <span>💺 Ghế: {seatNumbers.join(", ") || "—"}</span>
-                  <span>Mã vé: <b>{group.tickets[0]?.ticket_code || "—"}</b> · Đơn #{group.tickets[0]?.booking_id} · {totalPrice.toLocaleString("vi-VN")} đ</span>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

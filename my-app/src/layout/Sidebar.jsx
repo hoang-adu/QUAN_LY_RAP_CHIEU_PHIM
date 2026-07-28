@@ -25,6 +25,7 @@ const MENU_GROUPS = [
     items: [
       { to: "/bookings/new", label: "Bán vé mới", icon: "➕", hideForGuard: true },
       { to: "/bookings", label: "Đặt vé & Vé", icon: "🎟️", hideForGuard: true },
+      { to: "/tickets/checkin", label: "Nhận vé (mã vé)", icon: "🎫" },
       { to: "/payments", label: "Thanh toán", icon: "💳", hideForGuard: true },
       { to: "/products", label: "Sản phẩm & Đồ ăn", icon: "🍿", hideForGuard: true },
     ],

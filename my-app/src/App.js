@@ -21,6 +21,7 @@ import PaymentsPage from "./pages/PaymentsPage";
 import ProductsPage from "./pages/ProductsPage";
 import CustomersPage from "./pages/CustomersPage";
 import EmployeesPage from "./pages/EmployeesPage";
+import TicketCheckInPage from "./pages/TicketCheckInPage";
 import StatsPage from "./pages/StatsPage";
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
                     <Route path="/showtimes" element={<ShowtimesPage />} />
                     <Route path="/bookings" element={<BookingsPage />} />
                     <Route path="/bookings/new" element={<NewBookingPage />} />
+                    <Route path="/tickets/checkin" element={<TicketCheckInPage />} />
                     <Route path="/payments" element={<PaymentsPage />} />
                     <Route path="/products" element={<ProductsPage />} />
                     <Route path="/customers" element={<CustomersPage />} />

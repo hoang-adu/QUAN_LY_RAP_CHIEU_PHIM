@@ -39,6 +39,13 @@ export class TicketsService {
       );
     }
 
+    // Mọi vé cùng 1 booking (khách đặt nhiều ghế 1 lần) dùng chung 1 mã vé,
+    // để khách chỉ cần đưa 1 mã tại quầy là nhận đủ vé cho tất cả ghế.
+    const sibling = await this.ticketRepository.findOne({
+      where: { booking_id: dto.booking_id },
+    });
+    const ticketCode = sibling?.ticket_code ?? (await this.generateUniqueCode());
+
     const ticket = await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Ticket);
 
@@ -58,7 +65,7 @@ export class TicketsService {
       }
 
       try {
-        const ticket = repo.create(dto);
+        const ticket = repo.create({ ...dto, ticket_code: ticketCode });
         return await repo.save(ticket);
       } catch (err) {
         // Phòng hờ: nếu vẫn lọt race condition, ràng buộc UNIQUE(showtime_id,
@@ -115,6 +122,70 @@ export class TicketsService {
       where: { booking_id: bookingId },
       order: { ticket_id: 'ASC' },
     });
+  }
+
+  // ─────────────────────────────────────────
+  // MÃ VÉ (Phase 3) — sinh mã vé duy nhất, không trùng
+  // ─────────────────────────────────────────
+  private async generateUniqueCode(): Promise<string> {
+    // Bỏ các ký tự dễ nhầm lẫn khi đọc/gõ tay: 0, O, 1, I
+    const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for (let attempt = 0; attempt < 10; attempt++) {
+      let code = 'VE-';
+      for (let i = 0; i < 6; i++) {
+        code += charset[Math.floor(Math.random() * charset.length)];
+      }
+      const exists = await this.ticketRepository.findOne({
+        where: { ticket_code: code },
+      });
+      if (!exists) return code;
+    }
+    throw new Error('Không thể sinh mã vé duy nhất, vui lòng thử lại.');
+  }
+
+  // ─────────────────────────────────────────
+  // READ BY CODE — Lấy tất cả vé có cùng mã vé (cùng 1 booking)
+  // ─────────────────────────────────────────
+  async findByCode(code: string): Promise<Ticket[]> {
+    return this.ticketRepository.find({
+      where: { ticket_code: code },
+      order: { seat_id: 'ASC' },
+    });
+  }
+
+  async lookupByCode(code: string): Promise<Ticket[]> {
+    const tickets = await this.findByCode(code);
+    if (tickets.length === 0) {
+      throw new NotFoundException(`Không tìm thấy vé nào với mã "${code}"`);
+    }
+    return tickets;
+  }
+
+  // ─────────────────────────────────────────
+  // CHECK-IN TẠI QUẦY — khách đưa mã vé, nhân viên xác nhận đã đưa vé thật.
+  // Chặn nhận 2 lần cho cùng 1 mã.
+  // ─────────────────────────────────────────
+  async checkIn(code: string): Promise<Ticket[]> {
+    const tickets = await this.lookupByCode(code);
+    const notYetPickedUp = tickets.filter((t) => !t.is_picked_up);
+
+    if (notYetPickedUp.length === 0) {
+      const pickedAt = tickets[0]?.picked_up_at;
+      throw new BadRequestException(
+        `Mã vé "${code}" đã được nhận vé trước đó` +
+          (pickedAt ? ` lúc ${new Date(pickedAt).toLocaleString('vi-VN')}` : '') +
+          '.',
+      );
+    }
+
+    const now = new Date();
+    for (const t of notYetPickedUp) {
+      t.is_picked_up = true;
+      t.picked_up_at = now;
+    }
+    await this.ticketRepository.save(notYetPickedUp);
+
+    return this.findByCode(code);
   }
 
   // ─────────────────────────────────────────

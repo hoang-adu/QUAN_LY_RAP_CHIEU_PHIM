@@ -41,6 +41,7 @@ export default function CustomerBookingPage() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [submitting, setSubmitting] = useState(false);
+  const [successInfo, setSuccessInfo] = useState(null);
 
   // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn.
   const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
@@ -129,14 +130,16 @@ export default function CustomerBookingPage() {
       });
       const bookingId = booking.booking_id ?? booking.id;
 
+      const createdTickets = [];
       for (const seatId of selectedSeats) {
         const seat = seatById[seatId];
-        await createItem("tickets", {
+        const ticket = await createItem("tickets", {
           booking_id: bookingId,
           showtime_id: Number(showtimeId),
           seat_id: Number(seatId),
           ticket_price: priceForSeatType(seat?.seat_type),
         });
+        createdTickets.push(ticket);
       }
 
       await createItem("payments", {
@@ -147,7 +150,14 @@ export default function CustomerBookingPage() {
       });
 
       toast.success(`Đặt vé thành công! Đơn #${bookingId} với ${selectedSeats.length} ghế.`);
-      navigate("/account", { replace: true });
+      // Không chuyển trang ngay — hiện mã vé để khách chụp lại/ghi nhớ,
+      // vì mã này cần đưa tại quầy để nhận vé thật.
+      setSuccessInfo({
+        bookingId,
+        code: createdTickets[0]?.ticket_code || null,
+        seatNumbers: selectedSeats.map((id) => seatById[id]?.seat_number).filter(Boolean),
+        total,
+      });
     } catch (err) {
       toast.error(
         err.message ||
@@ -161,6 +171,43 @@ export default function CustomerBookingPage() {
   }
 
   const busy = movies.loading || rooms.loading || showtimes.loading;
+
+  if (successInfo) {
+    return (
+      <CustomerLayout>
+        <div className="cb-page">
+          <div className="page-head">
+            <div>
+              <div className="page-title">Đặt vé thành công! 🎉</div>
+              <div className="page-sub">Lưu lại mã vé bên dưới — đưa mã này tại quầy để nhận vé</div>
+            </div>
+          </div>
+
+          <div className="et-table-wrap" style={{ padding: 24, maxWidth: 420, textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: "#666", marginBottom: 6 }}>Mã vé của bạn</div>
+            <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 2, marginBottom: 14 }}>
+              {successInfo.code || "—"}
+            </div>
+            <div style={{ fontSize: 13, color: "#666" }}>
+              Đơn #{successInfo.bookingId} · Ghế: {successInfo.seatNumbers.join(", ") || "—"}
+            </div>
+            <div style={{ fontSize: 13, color: "#666", marginBottom: 18 }}>
+              Tổng tiền: {successInfo.total.toLocaleString("vi-VN")} đ
+            </div>
+            <div style={{ fontSize: 13, marginBottom: 18 }}>
+              Vui lòng đưa mã vé này cho nhân viên tại quầy trước giờ chiếu để nhận vé. Vé đặt online đã thanh toán sẽ <b>không được hoàn tiền</b> nếu không đi xem được.
+            </div>
+            <button
+              className="ui-btn ui-btn-primary"
+              onClick={() => navigate("/account", { replace: true })}
+            >
+              Về trang tài khoản
+            </button>
+          </div>
+        </div>
+      </CustomerLayout>
+    );
+  }
 
   return (
     <CustomerLayout>

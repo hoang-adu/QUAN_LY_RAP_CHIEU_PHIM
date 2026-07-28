@@ -89,6 +89,32 @@ export class TicketsController {
   }
 
   // ─────────────────────────────────────────
+  // GET /tickets/lookup/:code
+  // Tra cứu vé theo MÃ VÉ (khách đọc mã tại quầy) — chỉ nhân viên/admin,
+  // để nhân viên xem trước thông tin (ghế, suất chiếu, đã nhận chưa)
+  // trước khi xác nhận đưa vé thật.
+  // ─────────────────────────────────────────
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @Get('lookup/:code')
+  lookupByCode(@Param('code') code: string) {
+    return this.ticketsService.lookupByCode(code);
+  }
+
+  // ─────────────────────────────────────────
+  // POST /tickets/check-in/:code
+  // Xác nhận đã đưa vé thật cho khách tại quầy (đối chiếu mã vé) — chỉ
+  // nhân viên/admin. Chặn xác nhận 2 lần cho cùng 1 mã vé.
+  // ─────────────────────────────────────────
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @Post('check-in/:code')
+  @HttpCode(HttpStatus.OK)
+  checkIn(@Param('code') code: string) {
+    return this.ticketsService.checkIn(code);
+  }
+
+  // ─────────────────────────────────────────
   // PUT /tickets/:id
   // Cập nhật thông tin vé
   // Body: { booking_id?, showtime_id?, seat_id?, ticket_price? }

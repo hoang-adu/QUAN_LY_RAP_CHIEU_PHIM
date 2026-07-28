@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import useApiList from "../api/useApiList";
@@ -108,7 +107,8 @@ export default function BookingsPage() {
         loading={tickets.loading}
         error={tickets.error}
         columns={[
-          { key: "ticket_id", label: "Mã vé" },
+          { key: "ticket_id", label: "ID" },
+          { key: "ticket_code", label: "Mã vé", render: (v) => v || "—" },
           { key: "booking_id", label: "Đơn đặt vé (ID)" },
           { key: "showtime_id", label: "Suất chiếu (ID)" },
           { key: "seat_id", label: "Ghế (ID)" },
@@ -116,6 +116,15 @@ export default function BookingsPage() {
             key: "ticket_price",
             label: "Giá vé",
             render: (v) => (v != null ? Number(v).toLocaleString("vi-VN") + " đ" : "—"),
+          },
+          {
+            key: "is_picked_up",
+            label: "Nhận vé",
+            render: (v) => (
+              <span className={"et-badge " + (v ? "ok" : "pending")}>
+                {v ? "Đã nhận" : "Chưa nhận"}
+              </span>
+            ),
           },
         ]}
       />

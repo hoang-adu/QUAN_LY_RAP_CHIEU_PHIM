@@ -4,12 +4,66 @@ import React from "react";
 import useApiList from "../api/useApiList";
 import CrudSection from "../components/CrudSection";
 import "./table.css";
+import "./MoviesPage.css";
 
 function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("vi-VN");
+}
+
+// Ảnh poster có thể trống hoặc URL bị lỗi (link hỏng, sai tên file...) —
+// khi đó ẩn thẻ <img> đi và hiện icon thay thế để không hiển thị ô ảnh vỡ.
+function PosterThumb({ src, alt, large }) {
+  const [broken, setBroken] = React.useState(false);
+  const cls = "movie-thumb" + (large ? " movie-thumb--lg" : "");
+  if (!src || broken) {
+    return <div className={cls + " movie-thumb--empty"}>🎬</div>;
+  }
+  return (
+    <img
+      className={cls}
+      src={src}
+      alt={alt}
+      onError={() => setBroken(true)}
+    />
+  );
+}
+
+// Nội dung modal "Xem" — giới thiệu đầy đủ về phim (chỉ xem, không sửa).
+function MovieDetail({ row }) {
+  return (
+    <div className="movie-detail">
+      <div className="movie-detail__top">
+        <PosterThumb src={row.poster} alt={row.title} large />
+        <div className="movie-detail__top-info">
+          <div className="movie-detail__title">{row.title}</div>
+          {row.genre && <span className="movie-detail__tag">{row.genre}</span>}
+          <div className="movie-detail__meta">
+            {row.duration ? `⏱ ${row.duration} phút` : "⏱ Chưa rõ thời lượng"}
+            {" · "}📅 {formatDate(row.release_date)}
+          </div>
+        </div>
+      </div>
+
+      <div className="movie-detail__rows">
+        <div className="movie-detail__row">
+          <span>Đạo diễn</span>
+          <strong>{row.director || "—"}</strong>
+        </div>
+        <div className="movie-detail__row">
+          <span>Diễn viên</span>
+          <strong>{row.actors || "—"}</strong>
+        </div>
+      </div>
+
+      <div className="movie-detail__desc">
+        <div className="movie-detail__desc-label">Giới thiệu phim</div>
+        <p>{row.description || "Chưa có mô tả cho phim này."}</p>
+      </div>
+    </div>
+  );
 }
 
 const FIELDS = [
@@ -37,12 +91,19 @@ export default function MoviesPage() {
       error={error}
       reload={reload}
       fields={FIELDS}
+      renderDetail={(row) => <MovieDetail row={row} />}
+      detailTitle={() => "Thông tin phim"}
       toDto={(v) => ({
         ...v,
         duration: v.duration === "" ? null : Number(v.duration),
       })}
       columns={[
         { key: "movie_id", label: "Mã phim" },
+        {
+          key: "poster",
+          label: "Ảnh",
+          render: (v, row) => <PosterThumb src={v} alt={row.title} />,
+        },
         { key: "title", label: "Tên phim" },
         { key: "genre", label: "Thể loại" },
         { key: "duration", label: "Thời lượng", render: (v) => (v ? `${v} phút` : "—") },

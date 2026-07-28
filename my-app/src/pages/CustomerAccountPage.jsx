@@ -24,6 +24,23 @@ function formatDate(iso) {
   return d.toLocaleDateString("vi-VN");
 }
 
+// Ảnh poster thật của phim trên vé; rơi về icon 🎬 nếu chưa có poster
+// hoặc link ảnh lỗi.
+function TicketPoster({ src, alt }) {
+  const [broken, setBroken] = React.useState(false);
+  if (!src || broken) {
+    return <div className="ac-ticket__poster">🎬</div>;
+  }
+  return (
+    <img
+      className="ac-ticket__poster ac-ticket__poster--img"
+      src={src}
+      alt={alt}
+      onError={() => setBroken(true)}
+    />
+  );
+}
+
 export default function CustomerAccountPage() {
   const auth = getAuth();
 
@@ -149,7 +166,7 @@ export default function CustomerAccountPage() {
                 return (
                   <div className={"ac-ticket" + (pickedUp ? " picked" : "")} key={group.code}>
                     <div className="ac-ticket__main">
-                      <div className="ac-ticket__poster">🎬</div>
+                      <TicketPoster src={movie?.poster} alt={movie?.title} />
                       <div className="ac-ticket__body">
                         <div className="ac-ticket__title-row">
                           <strong>{movie?.title || "Phim #" + (firstShowtime?.movie_id ?? "?")}</strong>

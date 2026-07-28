@@ -44,6 +44,8 @@ export default function CrudSection({
   searchable = true,
   searchKeys, // mảng key dùng để tìm kiếm; mặc định dùng tất cả cột hiển thị
   extraHeaderButton,
+  renderDetail, // (row) => ReactNode — nếu truyền vào: bấm dòng/nút "Xem" sẽ mở modal thông tin chi tiết (chỉ xem)
+  detailTitle, // (row) => string — tiêu đề modal chi tiết, mặc định dùng title chung
 }) {
   const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,6 +56,7 @@ export default function CrudSection({
   const [confirmRow, setConfirmRow] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [detailRow, setDetailRow] = useState(null);
 
   const filtered = useMemo(() => {
     if (!searchable || !keyword.trim()) return rows;
@@ -69,6 +72,14 @@ export default function CrudSection({
     setValues(emptyValuesFromFields(fields));
     setFormError(null);
     setModalOpen(true);
+  }
+
+  function openDetail(row) {
+    setDetailRow(row);
+  }
+
+  function closeDetail() {
+    setDetailRow(null);
   }
 
   function openEdit(row) {
@@ -168,10 +179,16 @@ export default function CrudSection({
         loading={loading}
         error={error}
         columns={columns}
+        onRowClick={renderDetail ? openDetail : undefined}
         actions={
-          canEdit || canDelete
+          renderDetail || canEdit || canDelete
             ? (row) => (
                 <>
+                  {renderDetail && (
+                    <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => openDetail(row)}>
+                      Xem
+                    </button>
+                  )}
                   {canEdit && (
                     <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => openEdit(row)}>
                       Sửa
@@ -262,6 +279,17 @@ export default function CrudSection({
           </div>
         </form>
       </Modal>
+
+      {renderDetail && (
+        <Modal
+          open={!!detailRow}
+          onClose={closeDetail}
+          title={detailRow ? (detailTitle ? detailTitle(detailRow) : title) : ""}
+          width={620}
+        >
+          {detailRow && renderDetail(detailRow)}
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={!!confirmRow}

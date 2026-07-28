@@ -12,10 +12,33 @@ import useSeatLocks from "../api/useSeatLocks";
 import { getCustomerId } from "../api/auth";
 import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { useToast } from "../components/ToastContext";
+import Modal from "../components/Modal";
 import CustomerLayout from "../layout/CustomerLayout";
 import "./customerBooking.css";
 
 const POSTER_THEMES = ["t1", "t2", "t3", "t4", "t5", "t6"];
+
+// Hiện ảnh poster thật (m.poster) nếu có và tải được; nếu phim chưa có
+// poster hoặc link ảnh bị lỗi thì mới rơi về icon 🎬 nền màu như trước.
+function MoviePoster({ src, alt, theme, selected }) {
+  const [broken, setBroken] = React.useState(false);
+  const showFallback = !src || broken;
+  return (
+    <div className={"cb-movie-poster " + theme}>
+      {showFallback ? (
+        <span className="cb-movie-poster__icon">🎬</span>
+      ) : (
+        <img
+          className="cb-movie-poster__img"
+          src={src}
+          alt={alt}
+          onError={() => setBroken(true)}
+        />
+      )}
+      {selected && <span className="cb-movie-poster__check">✓</span>}
+    </div>
+  );
+}
 
 function formatDate(iso) {
   if (!iso) return "—";
@@ -56,6 +79,7 @@ export default function CustomerBookingPage() {
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [submitting, setSubmitting] = useState(false);
   const [successInfo, setSuccessInfo] = useState(null);
+  const [detailMovie, setDetailMovie] = useState(null);
 
   // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn.
   const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
@@ -306,18 +330,28 @@ export default function CustomerBookingPage() {
                       key={m.movie_id}
                       onClick={() => selectMovie(m.movie_id)}
                     >
-                      <div className={"cb-movie-poster " + POSTER_THEMES[idx % POSTER_THEMES.length]}>
-                        <span className="cb-movie-poster__icon">🎬</span>
-                        {String(movieId) === String(m.movie_id) && (
-                          <span className="cb-movie-poster__check">✓</span>
-                        )}
-                      </div>
+                      <MoviePoster
+                        src={m.poster}
+                        alt={m.title}
+                        theme={POSTER_THEMES[idx % POSTER_THEMES.length]}
+                        selected={String(movieId) === String(m.movie_id)}
+                      />
                       <div className="cb-movie-info">
                         <div className="cb-movie-tag">{m.genre || "Chưa phân loại"}</div>
                         <div className="cb-movie-title">{m.title}</div>
                         <div className="cb-movie-meta">
                           ⏱ {m.duration ?? "?"} phút · 📅 {formatDate(m.release_date)}
                         </div>
+                        <button
+                          type="button"
+                          className="cb-movie-info-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailMovie(m);
+                          }}
+                        >
+                          ℹ️ Chi tiết phim
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -514,6 +548,65 @@ export default function CustomerBookingPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={!!detailMovie}
+        onClose={() => setDetailMovie(null)}
+        title="Thông tin phim"
+        width={620}
+      >
+        {detailMovie && (
+          <div className="cb-movie-detail">
+            <div className="cb-movie-detail__top">
+              <MoviePoster
+                src={detailMovie.poster}
+                alt={detailMovie.title}
+                theme={
+                  POSTER_THEMES[
+                    movies.rows.findIndex((m) => m.movie_id === detailMovie.movie_id) %
+                      POSTER_THEMES.length
+                  ]
+                }
+              />
+              <div className="cb-movie-detail__info">
+                <div className="cb-movie-tag">{detailMovie.genre || "Chưa phân loại"}</div>
+                <div className="cb-movie-detail__title">{detailMovie.title}</div>
+                <div className="cb-movie-meta">
+                  ⏱ {detailMovie.duration ?? "?"} phút · 📅 {formatDate(detailMovie.release_date)}
+                </div>
+                {detailMovie.director && (
+                  <div className="cb-movie-detail__row">
+                    <span>Đạo diễn</span>
+                    <strong>{detailMovie.director}</strong>
+                  </div>
+                )}
+                {detailMovie.actors && (
+                  <div className="cb-movie-detail__row">
+                    <span>Diễn viên</span>
+                    <strong>{detailMovie.actors}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="cb-movie-detail__desc">
+              <div className="cb-movie-detail__desc-label">Giới thiệu phim</div>
+              <p>{detailMovie.description || "Chưa có mô tả cho phim này."}</p>
+            </div>
+
+            <button
+              type="button"
+              className="cb-btn cb-btn-primary cb-btn-block"
+              onClick={() => {
+                selectMovie(detailMovie.movie_id);
+                setDetailMovie(null);
+              }}
+            >
+              Chọn phim này
+            </button>
+          </div>
+        )}
+      </Modal>
     </CustomerLayout>
   );
 }

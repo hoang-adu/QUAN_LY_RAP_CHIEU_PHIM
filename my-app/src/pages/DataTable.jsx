@@ -18,6 +18,7 @@ export default function DataTable({
   emptyText,
   pageSize = 10,
   actions, // (row) => ReactNode — nếu truyền vào sẽ thêm cột "Thao tác"
+  onRowClick, // (row) => void — nếu truyền vào, cả dòng sẽ bấm được (VD: xem chi tiết)
 }) {
   const [page, setPage] = useState(1);
 
@@ -56,14 +57,18 @@ export default function DataTable({
           </thead>
           <tbody>
             {pageRows.map((row, idx) => (
-              <tr key={row.id ?? start + idx}>
+              <tr
+                key={row.id ?? start + idx}
+                className={onRowClick ? "et-row-clickable" : undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((c) => (
                   <td key={c.key}>
                     {c.render ? c.render(row[c.key], row) : renderValue(row[c.key])}
                   </td>
                 ))}
                 {actions && (
-                  <td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="ui-row-actions">{actions(row)}</div>
                   </td>
                 )}

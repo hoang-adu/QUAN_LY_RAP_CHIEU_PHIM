@@ -7,6 +7,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem } from "../api/apiClient";
+import useSeatLocks from "../api/useSeatLocks";
 import { getCustomerId } from "../api/auth";
 import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { useToast } from "../components/ToastContext";
@@ -40,6 +41,9 @@ export default function CustomerBookingPage() {
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [submitting, setSubmitting] = useState(false);
+
+  // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn.
+  const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
 
   const seatById = useMemo(
     () => Object.fromEntries(seats.rows.map((s) => [String(s.seat_id), s])),
@@ -83,12 +87,22 @@ export default function CustomerBookingPage() {
     setSelectedSeats([]);
   }
 
-  function toggleSeat(seat) {
+  async function toggleSeat(seat) {
     const id = String(seat.seat_id);
-    if (takenSeatIds.has(id)) return;
-    setSelectedSeats((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
-    );
+    if (takenSeatIds.has(id) || lockedByOthers.has(id)) return;
+
+    if (selectedSeats.includes(id)) {
+      setSelectedSeats((cur) => cur.filter((x) => x !== id));
+      release(id);
+      return;
+    }
+
+    try {
+      await hold(id);
+      setSelectedSeats((cur) => [...cur, id]);
+    } catch (err) {
+      toast.error(err.message || `Ghế ${seat.seat_number} vừa được người khác giữ.`);
+    }
   }
 
   const total = selectedSeats.reduce((sum, seatId) => {
@@ -224,6 +238,7 @@ export default function CustomerBookingPage() {
                 <div className="section-title">3. Chọn ghế</div>
                 <div className="seat-legend">
                   <span><span className="dot avail" /> Còn trống</span>
+                  <span><span className="dot held" /> Đang được giữ</span>
                   <span><span className="dot taken" /> Đã bán</span>
                   <span><span className="dot selected" /> Đang chọn</span>
                 </div>
@@ -232,14 +247,19 @@ export default function CustomerBookingPage() {
                   <span>{SEAT_TYPE_LABELS.vip} — {priceForSeatType("vip").toLocaleString("vi-VN")} đ (hàng D-G)</span>
                   <span>{SEAT_TYPE_LABELS.couple} — {priceForSeatType("couple").toLocaleString("vi-VN")} đ (hàng H)</span>
                 </div>
+                <div className="page-sub" style={{ marginBottom: 10 }}>
+                  Ghế bạn chọn sẽ được giữ trong 5 phút để hoàn tất thanh toán. Quá thời gian, ghế sẽ tự trống lại.
+                </div>
 
                 {roomSeats.length === 0 ? (
                   <div className="et-status">Phòng chiếu này chưa được khai báo ghế.</div>
                 ) : (
                   <div className="seat-map">
                     {roomSeats.map((seat) => {
-                      const taken = takenSeatIds.has(String(seat.seat_id));
-                      const selected = selectedSeats.includes(String(seat.seat_id));
+                      const seatId = String(seat.seat_id);
+                      const taken = takenSeatIds.has(seatId);
+                      const held = lockedByOthers.has(seatId);
+                      const selected = selectedSeats.includes(seatId);
                       return (
                         <button
                           type="button"
@@ -247,13 +267,20 @@ export default function CustomerBookingPage() {
                           className={
                             "seat-btn" +
                             (taken ? " taken" : "") +
+                            (!taken && held ? " held" : "") +
                             (selected ? " selected" : "") +
                             (seat.seat_type === "vip" ? " vip" : "") +
                             (seat.seat_type === "couple" ? " couple" : "")
                           }
-                          disabled={taken}
+                          disabled={taken || (held && !selected)}
                           onClick={() => toggleSeat(seat)}
-                          title={`${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`}
+                          title={
+                            taken
+                              ? "Ghế đã bán"
+                              : held
+                                ? "Ghế đang được người khác giữ, thử lại sau ít phút"
+                                : `${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`
+                          }
                         >
                           {seat.seat_number}
                         </button>

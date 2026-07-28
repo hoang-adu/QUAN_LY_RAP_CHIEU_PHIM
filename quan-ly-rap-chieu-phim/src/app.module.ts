@@ -15,6 +15,7 @@ import { EmployeesModule } from './employees/employees.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { SeatLocksModule } from './seat-locks/seat-locks.module';
 
 // Thành viên 3
 import { PaymentsModule } from './payments/payments.module';
@@ -57,6 +58,7 @@ import { AuthModule } from './auth/auth.module';
     ShowtimesModule,
     BookingsModule,
     TicketsModule,
+    SeatLocksModule,
 
     // Thành viên 3
     PaymentsModule,

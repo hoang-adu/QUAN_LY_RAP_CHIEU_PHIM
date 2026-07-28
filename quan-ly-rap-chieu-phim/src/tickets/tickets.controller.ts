@@ -53,7 +53,12 @@ export class TicketsController {
         );
       }
     }
-    return this.ticketsService.create(dto);
+    // Truyền "holder" để TicketsService kiểm tra ghế không đang bị NGƯỜI
+    // KHÁC giữ tạm (seat-lock) trước khi tạo vé.
+    const holder = isStaff
+      ? ({ holder_type: 'employee', holder_id: user.employee_id as number } as const)
+      : ({ holder_type: 'customer', holder_id: user.customer_id as number } as const);
+    return this.ticketsService.create(dto, holder);
   }
 
   // ─────────────────────────────────────────

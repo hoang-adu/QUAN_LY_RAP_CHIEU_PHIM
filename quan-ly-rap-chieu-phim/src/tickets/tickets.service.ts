@@ -8,6 +8,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Ticket } from './ticket.entity';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
+import { SeatLocksService, Holder } from '../seat-locks/seat-locks.service';
 
 @Injectable()
 export class TicketsService {
@@ -15,17 +16,30 @@ export class TicketsService {
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
     private readonly dataSource: DataSource,
+    private readonly seatLocksService: SeatLocksService,
   ) {}
 
   // ─────────────────────────────────────────
   // CREATE — Tạo vé mới
-  // Lưu ý: đây chỉ là lớp phòng thủ ở tầng CSDL (transaction + lock hàng +
-  // bắt lỗi unique). Nó KHÔNG thay thế cơ chế "giữ ghế tạm thời" (seat lock)
-  // cần có ở tầng nghiệp vụ để tránh 2 khách cùng chọn 1 ghế trong lúc đang
-  // điền thông tin thanh toán — phần đó cần làm riêng (xem seat-locks module).
+  // 2 lớp bảo vệ khỏi race condition (2 người cùng mua 1 ghế 1 lúc):
+  //  1) Nghiệp vụ: nếu holder được truyền vào (người đang thực hiện thao
+  //     tác) thì kiểm tra ghế không đang bị NGƯỜI KHÁC giữ tạm (seat-lock)
+  //     -> chặn sớm với thông báo thân thiện.
+  //  2) CSDL: transaction + lock hàng (pessimistic_write) + bắt lỗi
+  //     UNIQUE(showtime_id, seat_id) -> lớp phòng thủ cuối cùng, luôn chạy
+  //     dù có seat-lock hay không (vd. bán tại quầy không qua bước giữ ghế).
+  // Sau khi tạo vé thành công -> nhả seat-lock (nếu có) vì ghế đã bán.
   // ─────────────────────────────────────────
-  async create(dto: CreateTicketDto): Promise<Ticket> {
-    return this.dataSource.transaction(async (manager) => {
+  async create(dto: CreateTicketDto, holder?: Holder): Promise<Ticket> {
+    if (holder) {
+      await this.seatLocksService.assertAvailableFor(
+        dto.showtime_id,
+        dto.seat_id,
+        holder,
+      );
+    }
+
+    const ticket = await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Ticket);
 
       // Lock hàng liên quan (nếu có) để 2 request đồng thời không cùng lọt qua
@@ -59,6 +73,14 @@ export class TicketsService {
         throw err;
       }
     });
+
+    // Ghế đã bán -> không cần giữ tạm nữa, nhả lock (nếu có) cho gọn dữ liệu.
+    await this.seatLocksService.releaseAfterPurchase(
+      dto.showtime_id,
+      dto.seat_id,
+    );
+
+    return ticket;
   }
 
   // ─────────────────────────────────────────

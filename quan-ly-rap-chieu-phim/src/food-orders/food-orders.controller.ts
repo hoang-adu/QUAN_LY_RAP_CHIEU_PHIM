@@ -8,34 +8,66 @@ import {
   Delete,
   ParseIntPipe,
   HttpCode,
+  UseGuards,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FoodOrdersService } from './food-orders.service';
 import { CreateFoodOrderDto } from './dto/create-food-order.dto';
 import { UpdateFoodOrderDto } from './dto/update-food-order.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
+interface AuthedRequest {
+  user: { role?: string; customer_id?: number; employee_id?: number };
+}
+
+@UseGuards(JwtAuthGuard)
 @Controller('food-orders')
 export class FoodOrdersController {
   constructor(private readonly foodOrdersService: FoodOrdersService) {}
 
-  // POST /food-orders - Tạo hóa đơn đồ ăn mới
+  // POST /food-orders - Khách hàng đặt đồ ăn cho chính mình; nhân viên/admin
+  // tạo được cho bất kỳ khách nào (bán tại quầy)
   @Post()
-  create(@Body() createFoodOrderDto: CreateFoodOrderDto) {
+  create(
+    @Body() createFoodOrderDto: CreateFoodOrderDto,
+    @Request() req: AuthedRequest,
+  ) {
+    const user = req.user;
+    const isStaff = user?.role === 'admin' || user?.role === 'employee';
+    if (!isStaff && user?.customer_id !== createFoodOrderDto.customer_id) {
+      throw new ForbiddenException('Bạn chỉ có thể đặt đồ ăn cho chính mình');
+    }
     return this.foodOrdersService.create(createFoodOrderDto);
   }
 
-  // GET /food-orders - Lấy danh sách tất cả hóa đơn
+  // GET /food-orders - chỉ nhân viên/admin xem toàn bộ hóa đơn đồ ăn
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'employee')
   @Get()
   findAll() {
     return this.foodOrdersService.findAll();
   }
 
-  // GET /food-orders/:id - Lấy 1 hóa đơn theo id
+  // GET /food-orders/:id - staff xem mọi hóa đơn; khách chỉ xem hóa đơn của mình
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.foodOrdersService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthedRequest,
+  ) {
+    const order = await this.foodOrdersService.findOne(id);
+    const user = req.user;
+    const isStaff = user?.role === 'admin' || user?.role === 'employee';
+    if (!isStaff && order.customer_id !== user?.customer_id) {
+      throw new ForbiddenException('Bạn không có quyền xem hóa đơn này');
+    }
+    return order;
   }
 
-  // PATCH /food-orders/:id - Cập nhật hóa đơn theo id
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'employee')
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -44,7 +76,8 @@ export class FoodOrdersController {
     return this.foodOrdersService.update(id, updateFoodOrderDto);
   }
 
-  // DELETE /food-orders/:id - Xóa hóa đơn theo id
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'employee')
   @Delete(':id')
   @HttpCode(200)
   remove(@Param('id', ParseIntPipe) id: number) {

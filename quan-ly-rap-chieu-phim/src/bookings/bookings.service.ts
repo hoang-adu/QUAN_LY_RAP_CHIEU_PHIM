@@ -17,8 +17,11 @@ export class BookingsService {
     return this.bookingRepository.save(booking);
   }
 
-  async findAll(): Promise<Booking[]> {
-    return this.bookingRepository.find({ order: { booking_id: 'ASC' } });
+  async findAll(customerId?: number): Promise<Booking[]> {
+    return this.bookingRepository.find({
+      where: customerId ? { customer_id: customerId } : {},
+      order: { booking_id: 'ASC' },
+    });
   }
 
   async findOne(id: number): Promise<Booking> {

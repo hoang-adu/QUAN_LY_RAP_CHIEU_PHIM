@@ -9,7 +9,6 @@ import { ToastProvider } from "./components/ToastContext";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import CustomerAccountPage from "./pages/CustomerAccountPage";
 import CustomerBookingPage from "./pages/CustomerBookingPage";
 import HomePage from "./pages/HomePage";
@@ -24,6 +23,7 @@ import CustomersPage from "./pages/CustomersPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import TicketCheckInPage from "./pages/TicketCheckInPage";
 import StatsPage from "./pages/StatsPage";
+import PricingPage from "./pages/PricingPage";
 
 function App() {
   return (
@@ -33,7 +33,6 @@ function App() {
           {/* Trang đăng nhập/đăng ký — không bọc Sidebar/Topbar */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Trang tài khoản + đặt vé online của khách hàng — cũng không dùng dashboard Admin */}
           <Route
@@ -83,6 +82,14 @@ function App() {
                       element={
                         <AdminRoute>
                           <StatsPage />
+                        </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/pricing"
+                      element={
+                        <AdminRoute>
+                          <PricingPage />
                         </AdminRoute>
                       }
                     />

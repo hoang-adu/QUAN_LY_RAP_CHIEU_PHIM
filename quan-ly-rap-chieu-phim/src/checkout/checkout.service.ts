@@ -9,7 +9,7 @@ import { Payment } from '../payments/payment.entity';
 import { Booking } from '../bookings/booking.entity';
 import { Seat } from '../seats/seat.entity';
 import { Showtime } from '../showtimes/showtime.entity';
-import { priceForSeatType } from '../seats/seat-pricing';
+import { TicketPricesService } from '../ticket-prices/ticket-prices.service';
 import { CheckoutBookingDto } from './dto/checkout-booking.dto';
 import { Holder } from '../seat-locks/seat-locks.service';
 
@@ -37,6 +37,7 @@ export class CheckoutService {
     private readonly bookingsService: BookingsService,
     private readonly ticketsService: TicketsService,
     private readonly paymentsService: PaymentsService,
+    private readonly ticketPricesService: TicketPricesService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
     @InjectRepository(Seat)
@@ -92,6 +93,12 @@ export class CheckoutService {
     });
     const seatById = new Map(seatEntities.map((s) => [s.seat_id, s]));
 
+    // Lấy TOÀN BỘ bảng giá hiện hành 1 LẦN trước vòng lặp (thay vì gọi lại
+    // cho từng ghế) — vừa nhanh hơn, vừa đảm bảo mọi ghế trong CÙNG 1 lần
+    // checkout này dùng chung 1 "phiên bản giá" nhất quán, không bị lệch
+    // nếu chẳng may admin đổi giá đúng lúc khách đang bấm thanh toán.
+    const currentPrices = await this.ticketPricesService.getCurrentPrices();
+
     const seats: Array<{ seat_id: number; ticket_price: number }> = [];
     for (const s of seatDtos) {
       const seat = seatById.get(s.seat_id);
@@ -103,7 +110,11 @@ export class CheckoutService {
           `Ghế #${s.seat_id} không thuộc phòng chiếu của suất chiếu #${dto.showtime_id}`,
         );
       }
-      seats.push({ seat_id: s.seat_id, ticket_price: priceForSeatType(seat.seat_type) });
+      const price =
+        seat.seat_type && currentPrices[seat.seat_type] != null
+          ? currentPrices[seat.seat_type]
+          : currentPrices.standard;
+      seats.push({ seat_id: s.seat_id, ticket_price: price });
     }
 
     const totalAmount = seats.reduce((sum, s) => sum + s.ticket_price, 0);

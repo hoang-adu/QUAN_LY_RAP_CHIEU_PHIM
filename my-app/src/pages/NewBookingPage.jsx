@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem } from "../api/apiClient";
 import useSeatLocks from "../api/useSeatLocks";
-import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
+import { SEAT_TYPE_LABELS } from "../utils/seatPricing";
+import { getCurrentPrices } from "../api/ticketPrices";
 import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
@@ -23,6 +24,7 @@ export default function NewBookingPage() {
   const seats = useApiList("seats");
   const tickets = useApiList("tickets");
   const customers = useApiList("customers");
+  const products = useApiList("products");
 
   const [movieId, setMovieId] = useState("");
   const [showtimeId, setShowtimeId] = useState("");
@@ -32,6 +34,20 @@ export default function NewBookingPage() {
   const [createPayment, setCreatePayment] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [submitting, setSubmitting] = useState(false);
+  const [foodQuantities, setFoodQuantities] = useState({});
+
+  // Giá vé hiện hành lấy TRỰC TIẾP từ API quản lý giá (nguồn sự thật thật
+  // sự, có thể đổi bất cứ lúc nào ở trang "Quản lý giá vé") — không dùng
+  // hằng số hardcode cũ nữa, để giá hiển thị/gửi lên luôn khớp giá đang
+  // áp dụng thật, tránh tạo đơn với giá cũ sau khi admin đổi giá.
+  const [currentPrices, setCurrentPrices] = useState({});
+  useEffect(() => {
+    getCurrentPrices()
+      .then(setCurrentPrices)
+      .catch(() => setCurrentPrices({}));
+  }, []);
+  const priceForSeatType = (seatType) =>
+    Number(currentPrices[seatType] ?? currentPrices.standard ?? 0);
 
   // Form tạo nhanh khách vãng lai (mua tại quầy, không cần tài khoản).
   const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
@@ -140,14 +156,23 @@ export default function NewBookingPage() {
 
   function resetForm() {
     setSelectedSeats([]);
+    setFoodQuantities({});
     // Không cần gọi release() thủ công ở đây: vé tạo thành công thì backend
     // đã tự xoá seat-lock tương ứng (xem TicketsService.create).
   }
 
-  const total = selectedSeats.reduce((sum, seatId) => {
+  const ticketTotal = selectedSeats.reduce((sum, seatId) => {
     const seat = seatById[seatId];
     return sum + priceForSeatType(seat?.seat_type);
   }, 0);
+  const foodTotal = products.rows.reduce(
+    (sum, product) => sum + Number(product.price || 0) * Number(foodQuantities[product.product_id] || 0),
+    0,
+  );
+  const total = ticketTotal + foodTotal;
+  const foodItems = Object.entries(foodQuantities)
+    .filter(([, quantity]) => Number(quantity) > 0)
+    .map(([product_id, quantity]) => ({ product_id: Number(product_id), quantity: Number(quantity) }));
 
   async function handleSubmit() {
     if (!showtimeId) return toast.error("Vui lòng chọn suất chiếu.");
@@ -166,6 +191,7 @@ export default function NewBookingPage() {
           seat_id: Number(seatId),
           ticket_price: priceForSeatType(seatById[seatId]?.seat_type),
         })),
+        food_items: foodItems,
         pay: createPayment,
         payment_method: paymentMethod,
       });
@@ -373,6 +399,33 @@ export default function NewBookingPage() {
                 )}
               </div>
 
+              <div className="section-title">Đồ ăn và thức uống mua kèm</div>
+              <div className="ui-form-grid" style={{ marginBottom: 18 }}>
+                {products.rows.map((product) => (
+                  <div className="ui-field" key={product.product_id}>
+                    <label>{product.product_name} · {Number(product.price || 0).toLocaleString("vi-VN")} đ</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="0"
+                      value={foodQuantities[product.product_id] ?? ""}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        const stock = Number(product.stock_quantity || 0);
+                        const quantity = digits === "" ? "" : Math.min(stock, Number(digits));
+                        setFoodQuantities((cur) => ({
+                          ...cur,
+                          [product.product_id]: quantity,
+                        }));
+                      }}
+                    />
+                    <small>Còn {product.stock_quantity || 0} sản phẩm</small>
+                  </div>
+                ))}
+              </div>
+
               <div className="section-title">Thanh toán</div>
               <div className="ui-field" style={{ maxWidth: 260, marginBottom: 8 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
@@ -399,7 +452,7 @@ export default function NewBookingPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span>Số ghế đã chọn: <b>{selectedSeats.length}</b></span>
                   <span>Khách hàng: <b>{selectedCustomer?.full_name || "Chưa chọn"}</b></span>
-                  <span>Tổng tiền: <b>{total.toLocaleString("vi-VN")} đ</b></span>
+                  <span>Tiền vé: <b>{ticketTotal.toLocaleString("vi-VN")} đ</b> · Đồ ăn: <b>{foodTotal.toLocaleString("vi-VN")} đ</b> · Tổng: <b>{total.toLocaleString("vi-VN")} đ</b></span>
                 </div>
               </div>
 

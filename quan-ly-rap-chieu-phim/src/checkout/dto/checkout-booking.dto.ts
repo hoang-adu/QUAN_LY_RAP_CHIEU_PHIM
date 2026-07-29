@@ -33,6 +33,17 @@ export class CheckoutSeatDto {
   ticket_price?: number;
 }
 
+
+export class CheckoutFoodItemDto {
+  @IsInt({ message: 'product_id phải là số nguyên' })
+  @IsPositive({ message: 'product_id phải lớn hơn 0' })
+  product_id: number;
+
+  @IsInt({ message: 'quantity phải là số nguyên' })
+  @IsPositive({ message: 'quantity phải lớn hơn 0' })
+  quantity: number;
+}
+
 // DTO cho POST /bookings/checkout — gộp "tạo đơn + tạo vé cho từng ghế +
 // thu tiền" thành 1 request duy nhất, thay vì FE phải tự gọi lần lượt
 // POST /bookings -> POST /tickets (x N) -> POST /payments như trước.
@@ -67,6 +78,12 @@ export class CheckoutBookingDto {
    * thể bỏ qua (false) nếu khách chưa trả tiền ngay, để tạo đơn "pending"
    * rồi thu tiền sau ở trang Thanh toán.
    */
+  @IsOptional()
+  @IsArray({ message: 'food_items phải là danh sách sản phẩm' })
+  @ValidateNested({ each: true })
+  @Type(() => CheckoutFoodItemDto)
+  food_items?: CheckoutFoodItemDto[];
+
   @IsOptional()
   @IsBoolean({ message: 'pay phải là true/false' })
   pay?: boolean;

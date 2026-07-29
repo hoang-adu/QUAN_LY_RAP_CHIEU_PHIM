@@ -4,13 +4,14 @@
 // như NewBookingPage.jsx (bên phía nhân viên), chỉ khác customer_id lấy
 // thẳng từ tài khoản đang đăng nhập, không cần chọn khách hàng.
 // Giao diện được thiết kế lại theo phong cách CGV / Lotte Cinema.
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem, resolveAssetUrl } from "../api/apiClient";
 import useSeatLocks from "../api/useSeatLocks";
 import { getCustomerId } from "../api/auth";
-import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
+import { SEAT_TYPE_LABELS } from "../utils/seatPricing";
+import { getCurrentPrices } from "../api/ticketPrices";
 import { splitList } from "./MoviesPage";
 import { useToast } from "../components/ToastContext";
 import Modal from "../components/Modal";
@@ -74,14 +75,29 @@ export default function CustomerBookingPage() {
   const showtimes = useApiList("showtimes");
   const seats = useApiList("seats");
   const tickets = useApiList("tickets");
+  const products = useApiList("products");
 
   const [movieId, setMovieId] = useState("");
   const [showtimeId, setShowtimeId] = useState("");
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [submitting, setSubmitting] = useState(false);
+  const [foodQuantities, setFoodQuantities] = useState({});
   const [successInfo, setSuccessInfo] = useState(null);
   const [detailMovie, setDetailMovie] = useState(null);
+
+  // Giá vé hiện hành lấy TRỰC TIẾP từ API quản lý giá (nguồn sự thật thật
+  // sự, có thể đổi bất cứ lúc nào ở trang "Quản lý giá vé") — không dùng
+  // hằng số hardcode cũ nữa, để giá hiển thị/gửi lên luôn khớp giá đang
+  // áp dụng thật, tránh đặt vé với giá cũ sau khi rạp đổi giá.
+  const [currentPrices, setCurrentPrices] = useState({});
+  useEffect(() => {
+    getCurrentPrices()
+      .then(setCurrentPrices)
+      .catch(() => setCurrentPrices({}));
+  }, []);
+  const priceForSeatType = (seatType) =>
+    Number(currentPrices[seatType] ?? currentPrices.standard ?? 0);
 
   // Lọc theo thể loại (chọn dropdown, không cần gõ) + sắp xếp phim theo
   // ngày khởi chiếu — dành cho khách chưa biết tên phim/thể loại tiếng Anh.
@@ -230,10 +246,18 @@ export default function CustomerBookingPage() {
     }
   }
 
-  const total = selectedSeats.reduce((sum, seatId) => {
+  const ticketTotal = selectedSeats.reduce((sum, seatId) => {
     const seat = seatById[seatId];
     return sum + priceForSeatType(seat?.seat_type);
   }, 0);
+  const foodTotal = products.rows.reduce(
+    (sum, product) => sum + Number(product.price || 0) * Number(foodQuantities[product.product_id] || 0),
+    0,
+  );
+  const total = ticketTotal + foodTotal;
+  const foodItems = Object.entries(foodQuantities)
+    .filter(([, quantity]) => Number(quantity) > 0)
+    .map(([product_id, quantity]) => ({ product_id: Number(product_id), quantity: Number(quantity) }));
 
   async function handleSubmit() {
     if (!customerId) {
@@ -256,6 +280,7 @@ export default function CustomerBookingPage() {
           seat_id: Number(seatId),
           ticket_price: priceForSeatType(seatById[seatId]?.seat_type),
         })),
+        food_items: foodItems,
         pay: true,
         payment_method: paymentMethod,
       });
@@ -268,7 +293,7 @@ export default function CustomerBookingPage() {
         bookingId,
         code: result.tickets?.[0]?.ticket_code || null,
         seatNumbers: selectedSeats.map((id) => seatById[id]?.seat_number).filter(Boolean),
-        total,
+        total: Number(result.booking?.total_amount ?? total),
       });
     } catch (err) {
       toast.error(
@@ -591,6 +616,35 @@ export default function CustomerBookingPage() {
                       </strong>
                     </div>
                   )}
+
+                  <div className="cb-field">
+                    <label>Đồ ăn và thức uống mua kèm</label>
+                    {products.rows.map((product) => (
+                      <div className="cb-summary__row" key={product.product_id}>
+                        <span>{product.product_name}<br /><small>{Number(product.price || 0).toLocaleString("vi-VN")} đ · còn {product.stock_quantity || 0}</small></span>
+                        <input
+                          style={{ width: 70 }}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="0"
+                          value={foodQuantities[product.product_id] ?? ""}
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "");
+                            const stock = Number(product.stock_quantity || 0);
+                            const quantity = digits === "" ? "" : Math.min(stock, Number(digits));
+                            setFoodQuantities((cur) => ({
+                              ...cur,
+                              [product.product_id]: quantity,
+                            }));
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="cb-summary__row"><span>Tiền vé</span><strong>{ticketTotal.toLocaleString("vi-VN")} đ</strong></div>
+                  <div className="cb-summary__row"><span>Đồ ăn</span><strong>{foodTotal.toLocaleString("vi-VN")} đ</strong></div>
 
                   <div className="cb-summary__total">
                     <span>Tổng tiền</span>

@@ -7,6 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Ticket } from './ticket.entity';
 import { Payment } from '../payments/payment.entity';
+import { Booking } from '../bookings/booking.entity';
+import { FoodOrder } from '../food-orders/food-order.entity';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { SeatLocksService, Holder } from '../seat-locks/seat-locks.service';
@@ -223,39 +225,81 @@ export class TicketsService {
   }
 
   // ─────────────────────────────────────────
-  // UPDATE — Cập nhật thông tin vé
+  // UPDATE — Cập nhật thông tin vé và đồng bộ tổng tiền
   // ─────────────────────────────────────────
   async update(id: number, dto: UpdateTicketDto): Promise<Ticket> {
-    // Kiểm tra vé tồn tại
-    await this.findOne(id);
+    return this.dataSource.transaction(async (manager) => {
+      const ticketRepo = manager.getRepository(Ticket);
+      const paymentRepo = manager.getRepository(Payment);
+      const bookingRepo = manager.getRepository(Booking);
+      const foodOrderRepo = manager.getRepository(FoodOrder);
 
-    // Nếu đổi ghế/suất chiếu → kiểm tra trùng
-    if (dto.showtime_id !== undefined || dto.seat_id !== undefined) {
-      const current = await this.findOne(id);
-      const showtime_id = dto.showtime_id ?? current.showtime_id;
-      const seat_id = dto.seat_id ?? current.seat_id;
+      const ticket = await ticketRepo.findOne({ where: { ticket_id: id } });
+      if (!ticket) throw new NotFoundException(`Không tìm thấy vé có ID #${id}`);
 
-      const conflict = await this.ticketRepository.findOne({
-        where: { showtime_id, seat_id },
+      const paid = await paymentRepo.findOne({
+        where: { booking_id: ticket.booking_id, payment_status: 'paid' },
       });
-
-      if (conflict && conflict.ticket_id !== id) {
+      if (paid) {
         throw new BadRequestException(
-          `Ghế #${seat_id} đã được đặt cho suất chiếu #${showtime_id}`,
+          `Đơn #${ticket.booking_id} đã thanh toán — không được sửa vé hoặc đơn giá.`,
         );
       }
-    }
 
-    await this.ticketRepository.update(id, dto);
-    return this.findOne(id);
+      if (dto.showtime_id !== undefined || dto.seat_id !== undefined) {
+        const showtimeId = dto.showtime_id ?? ticket.showtime_id;
+        const seatId = dto.seat_id ?? ticket.seat_id;
+        const conflict = await ticketRepo.findOne({ where: { showtime_id: showtimeId, seat_id: seatId } });
+        if (conflict && conflict.ticket_id !== id) {
+          throw new BadRequestException(`Ghế #${seatId} đã được đặt cho suất chiếu #${showtimeId}`);
+        }
+      }
+
+      Object.assign(ticket, dto);
+      await ticketRepo.save(ticket);
+      await this.recalculateBookingTotal(ticket.booking_id, manager);
+      return ticket;
+    });
+  }
+
+  private async recalculateBookingTotal(bookingId: number, manager: any): Promise<void> {
+    const ticketRepo = manager.getRepository(Ticket);
+    const bookingRepo = manager.getRepository(Booking);
+    const paymentRepo = manager.getRepository(Payment);
+    const foodOrderRepo = manager.getRepository(FoodOrder);
+
+    const tickets = await ticketRepo.find({ where: { booking_id: bookingId } });
+    const foodOrder = await foodOrderRepo.findOne({ where: { booking_id: bookingId } });
+    const total = tickets.reduce((sum, item) => sum + Number(item.ticket_price ?? 0), 0)
+      + Number(foodOrder?.total_amount ?? 0);
+
+    await bookingRepo.update({ booking_id: bookingId }, { total_amount: total });
+    await paymentRepo.update(
+      { booking_id: bookingId, payment_status: 'pending' },
+      { amount: total },
+    );
   }
 
   // ─────────────────────────────────────────
-  // DELETE — Xóa vé
+  // DELETE — Xóa vé và đồng bộ tổng tiền
   // ─────────────────────────────────────────
   async remove(id: number): Promise<{ message: string }> {
-    await this.findOne(id); // throws 404 nếu không tồn tại
-    await this.ticketRepository.delete(id);
-    return { message: `Đã xóa vé #${id} thành công` };
+    return this.dataSource.transaction(async (manager) => {
+      const ticketRepo = manager.getRepository(Ticket);
+      const paymentRepo = manager.getRepository(Payment);
+      const ticket = await ticketRepo.findOne({ where: { ticket_id: id } });
+      if (!ticket) throw new NotFoundException(`Không tìm thấy vé có ID #${id}`);
+
+      const paid = await paymentRepo.findOne({
+        where: { booking_id: ticket.booking_id, payment_status: 'paid' },
+      });
+      if (paid) {
+        throw new BadRequestException(`Đơn #${ticket.booking_id} đã thanh toán — không được xóa vé.`);
+      }
+
+      await ticketRepo.remove(ticket);
+      await this.recalculateBookingTotal(ticket.booking_id, manager);
+      return { message: `Đã xóa vé #${id} thành công` };
+    });
   }
 }

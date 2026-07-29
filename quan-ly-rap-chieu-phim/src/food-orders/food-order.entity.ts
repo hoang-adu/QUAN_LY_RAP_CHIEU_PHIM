@@ -8,6 +8,12 @@ export class FoodOrder {
   @Column({ nullable: true })
   customer_id: number;
 
+  @Column({ nullable: true, unique: true })
+  booking_id: number;
+
+  @Column({ length: 20, default: 'pending' })
+  status: string;
+
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   order_date: Date;
 

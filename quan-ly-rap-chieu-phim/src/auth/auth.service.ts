@@ -57,7 +57,11 @@ export class AuthService {
       'customer_id' | 'email' | 'full_name' | 'phone' | 'points'
     >,
   ) {
-    const payload = { email: customer.email, sub: customer.customer_id };
+    const payload = {
+      email: customer.email,
+      sub: customer.customer_id,
+      role: 'customer',
+    };
     return {
       access_token: this.jwtService.sign(payload),
       role: 'customer',

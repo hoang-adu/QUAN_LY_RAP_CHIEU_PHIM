@@ -1,12 +1,17 @@
-
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem } from "../api/apiClient";
+import useSeatLocks from "../api/useSeatLocks";
 import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
+
+// Khách mua trực tiếp tại quầy không phải lúc nào cũng có tài khoản (không
+// cần password/email) — vẫn cần 1 dòng "customers" để gắn booking, nên cho
+// nhân viên tạo nhanh khách vãng lai ngay tại đây thay vì bắt buộc phải
+// chọn từ danh sách khách đã có sẵn.
 
 export default function NewBookingPage() {
   const navigate = useNavigate();
@@ -27,6 +32,16 @@ export default function NewBookingPage() {
   const [createPayment, setCreatePayment] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [submitting, setSubmitting] = useState(false);
+
+  // Form tạo nhanh khách vãng lai (mua tại quầy, không cần tài khoản).
+  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+
+  // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn —
+  // poll realtime để tránh chọn trùng ghế người khác đang thao tác dở.
+  const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
 
   const filteredShowtimes = useMemo(
     () => showtimes.rows.filter((s) => !movieId || String(s.movie_id) === String(movieId)),
@@ -76,16 +91,57 @@ export default function NewBookingPage() {
     (c) => String(c.customer_id) === String(customerId),
   );
 
-  function toggleSeat(seat) {
+  async function toggleSeat(seat) {
     const id = String(seat.seat_id);
-    if (takenSeatIds.has(id)) return;
-    setSelectedSeats((cur) =>
-      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id],
-    );
+    if (takenSeatIds.has(id) || lockedByOthers.has(id)) return;
+
+    if (selectedSeats.includes(id)) {
+      setSelectedSeats((cur) => cur.filter((x) => x !== id));
+      release(id);
+      return;
+    }
+
+    try {
+      // Giữ ghế trước ở backend — nếu người khác vừa giữ trước 1 nhịp thì
+      // API sẽ báo lỗi ngay, tránh cho khách điền hết thông tin rồi mới biết.
+      await hold(id);
+      setSelectedSeats((cur) => [...cur, id]);
+    } catch (err) {
+      toast.error(err.message || `Ghế ${seat.seat_number} vừa được người khác giữ.`);
+    }
+  }
+
+  async function handleCreateWalkInCustomer() {
+    if (!newCustomerName.trim()) {
+      toast.error("Vui lòng nhập tên khách hàng.");
+      return;
+    }
+    setCreatingCustomer(true);
+    try {
+      // Không gửi email/password — khách vãng lai không cần tài khoản để
+      // đăng nhập, chỉ cần 1 hồ sơ để gắn với đơn đặt vé này.
+      const created = await createItem("customers", {
+        full_name: newCustomerName.trim(),
+        phone: newCustomerPhone.trim() || undefined,
+      });
+      customers.reload();
+      setCustomerId(created.customer_id);
+      setCustomerKw("");
+      setShowNewCustomerForm(false);
+      setNewCustomerName("");
+      setNewCustomerPhone("");
+      toast.success(`Đã thêm khách hàng "${created.full_name}" và chọn cho đơn này.`);
+    } catch (err) {
+      toast.error(err.message || "Không thể tạo khách hàng mới.");
+    } finally {
+      setCreatingCustomer(false);
+    }
   }
 
   function resetForm() {
     setSelectedSeats([]);
+    // Không cần gọi release() thủ công ở đây: vé tạo thành công thì backend
+    // đã tự xoá seat-lock tương ứng (xem TicketsService.create).
   }
 
   const total = selectedSeats.reduce((sum, seatId) => {
@@ -100,31 +156,20 @@ export default function NewBookingPage() {
 
     setSubmitting(true);
     try {
-      const booking = await createItem("bookings", {
+      // Gọi 1 API duy nhất (tạo đơn + tạo vé cho từng ghế + thu tiền nếu
+      // chọn). Backend tự dọn sạch nếu có ghế bị người khác mua giữa
+      // chừng, không còn tình trạng "đơn mồ côi" thiếu vé/thiếu thanh toán.
+      const result = await createItem("bookings/checkout", {
         customer_id: Number(customerId),
-        total_amount: total,
-        status: "pending",
-      });
-      const bookingId = booking.booking_id ?? booking.id;
-
-      for (const seatId of selectedSeats) {
-        const seat = seatById[seatId];
-        await createItem("tickets", {
-          booking_id: bookingId,
-          showtime_id: Number(showtimeId),
+        showtime_id: Number(showtimeId),
+        seats: selectedSeats.map((seatId) => ({
           seat_id: Number(seatId),
-          ticket_price: priceForSeatType(seat?.seat_type),
-        });
-      }
-
-      if (createPayment) {
-        await createItem("payments", {
-          booking_id: bookingId,
-          amount: total,
-          payment_method: paymentMethod,
-          payment_status: "paid",
-        });
-      }
+          ticket_price: priceForSeatType(seatById[seatId]?.seat_type),
+        })),
+        pay: createPayment,
+        payment_method: paymentMethod,
+      });
+      const bookingId = result.booking?.booking_id;
 
       toast.success(`Đã tạo đơn đặt vé #${bookingId} với ${selectedSeats.length} ghế.`);
       resetForm();
@@ -204,6 +249,7 @@ export default function NewBookingPage() {
               <div className="section-title">Sơ đồ ghế</div>
               <div className="seat-legend">
                 <span><span className="dot avail" /> Còn trống</span>
+                <span><span className="dot held" /> Đang được giữ</span>
                 <span><span className="dot taken" /> Đã bán</span>
                 <span><span className="dot selected" /> Đang chọn</span>
               </div>
@@ -212,14 +258,19 @@ export default function NewBookingPage() {
                 <span>{SEAT_TYPE_LABELS.vip} — {priceForSeatType("vip").toLocaleString("vi-VN")} đ (hàng D-G)</span>
                 <span>{SEAT_TYPE_LABELS.couple} — {priceForSeatType("couple").toLocaleString("vi-VN")} đ (hàng H)</span>
               </div>
+              <div className="page-sub" style={{ marginBottom: 10 }}>
+                Ghế đã chọn sẽ được giữ trong 5 phút — quá thời gian mà chưa tạo đơn, ghế sẽ tự trống lại cho khách khác.
+              </div>
 
               {roomSeats.length === 0 ? (
                 <div className="et-status">Phòng chiếu này chưa được khai báo ghế.</div>
               ) : (
                 <div className="seat-map">
                   {roomSeats.map((seat) => {
-                    const taken = takenSeatIds.has(String(seat.seat_id));
-                    const selected = selectedSeats.includes(String(seat.seat_id));
+                    const seatId = String(seat.seat_id);
+                    const taken = takenSeatIds.has(seatId);
+                    const held = lockedByOthers.has(seatId);
+                    const selected = selectedSeats.includes(seatId);
                     return (
                       <button
                         type="button"
@@ -227,13 +278,20 @@ export default function NewBookingPage() {
                         className={
                           "seat-btn" +
                           (taken ? " taken" : "") +
+                          (!taken && held ? " held" : "") +
                           (selected ? " selected" : "") +
                           (seat.seat_type === "vip" ? " vip" : "") +
                           (seat.seat_type === "couple" ? " couple" : "")
                         }
-                        disabled={taken}
+                        disabled={taken || (held && !selected)}
                         onClick={() => toggleSeat(seat)}
-                        title={`${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`}
+                        title={
+                          taken
+                            ? "Ghế đã bán"
+                            : held
+                              ? "Ghế đang được người khác giữ, thử lại sau ít phút"
+                              : `${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`
+                        }
                       >
                         {seat.seat_number}
                       </button>
@@ -243,13 +301,57 @@ export default function NewBookingPage() {
               )}
 
               <div className="section-title">Khách hàng</div>
-              <div className="ui-field" style={{ maxWidth: 380, marginBottom: 10 }}>
-                <input
-                  placeholder="🔍 Tìm theo tên, SĐT, email..."
-                  value={customerKw}
-                  onChange={(e) => setCustomerKw(e.target.value)}
-                />
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 10 }}>
+                <div className="ui-field" style={{ maxWidth: 380, marginBottom: 0, flex: 1 }}>
+                  <input
+                    placeholder="🔍 Tìm theo tên, SĐT, email..."
+                    value={customerKw}
+                    onChange={(e) => setCustomerKw(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn-ghost ui-btn-sm"
+                  onClick={() => setShowNewCustomerForm((v) => !v)}
+                >
+                  {showNewCustomerForm ? "Hủy" : "+ Khách mới"}
+                </button>
               </div>
+
+              {showNewCustomerForm && (
+                <div className="et-table-wrap" style={{ padding: 14, marginBottom: 12 }}>
+                  <div className="page-sub" style={{ marginBottom: 8 }}>
+                    Khách mua tại quầy, không cần tài khoản — chỉ cần tên (và SĐT nếu có).
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <div className="ui-field" style={{ marginBottom: 0 }}>
+                      <label>Tên khách hàng</label>
+                      <input
+                        placeholder="Nguyễn Văn A"
+                        value={newCustomerName}
+                        onChange={(e) => setNewCustomerName(e.target.value)}
+                      />
+                    </div>
+                    <div className="ui-field" style={{ marginBottom: 0 }}>
+                      <label>SĐT (tùy chọn)</label>
+                      <input
+                        placeholder="09xxxxxxxx"
+                        value={newCustomerPhone}
+                        onChange={(e) => setNewCustomerPhone(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-primary ui-btn-sm"
+                      disabled={creatingCustomer}
+                      onClick={handleCreateWalkInCustomer}
+                    >
+                      {creatingCustomer ? "Đang thêm..." : "Thêm & chọn"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
                 {filteredCustomers.map((c) => (
                   <button
@@ -261,11 +363,13 @@ export default function NewBookingPage() {
                     }
                     onClick={() => setCustomerId(c.customer_id)}
                   >
-                    {c.full_name} · {c.phone || c.email}
+                    {c.full_name} · {c.phone || c.email || "chưa có SĐT"}
                   </button>
                 ))}
                 {customers.rows.length === 0 && (
-                  <span className="page-sub">Chưa có khách hàng nào trong hệ thống.</span>
+                  <span className="page-sub">
+                    Chưa có khách hàng nào trong hệ thống — bấm "+ Khách mới" để thêm.
+                  </span>
                 )}
               </div>
 

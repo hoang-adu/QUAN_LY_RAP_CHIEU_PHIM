@@ -1,52 +1,271 @@
 /* src/layout/customerLayout.css */
+/* Giao diện khu vực khách hàng phỏng theo bố cục rạp chiếu phim thật
+   (CGV / Lotte Cinema): navbar tối màu, CTA đỏ, thanh hotline mỏng. */
 
-.cl-header-inner {
-  justify-content: space-between;
+:root {
+  --cx-red: #e50914;
+  --cx-red-dark: #b8060f;
+  --cx-black: #141518;
+  --cx-black-2: #1d1f24;
+  --cx-gold: #d9a441;
+  --cx-bg: #f2f3f6;
 }
 
-.cl-nav {
+.cx-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--cx-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.cx-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: linear-gradient(180deg, var(--cx-black-2), var(--cx-black));
+  border-bottom: 3px solid var(--cx-red);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+}
+.cx-nav__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 68px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
+  position: relative;
 }
 
-.cl-nav-link {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #555555;
+.cx-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-decoration: none;
+  flex-shrink: 0;
 }
-
-.cl-nav-link:hover,
-.cl-nav-link.active {
-  color: #e50914;
+.cx-brand img {
+  height: 38px;
+  width: 38px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+  padding: 3px;
 }
-
-.cl-nav-name {
-  font-size: 13px;
-  color: #888888;
-  border-left: 1px solid #e0e0e0;
-  padding-left: 20px;
+.cx-brand span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.4px;
 }
-
-.cl-nav-logout {
-  background: none;
-  border: 1px solid #dcdcdc;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12.5px;
+.cx-brand span em {
+  font-style: normal;
+  font-size: 11px;
   font-weight: 600;
-  color: #555555;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.cx-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.cx-link {
+  color: #cfd1d8;
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cx-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.cx-link.active {
+  color: #fff;
+  background: var(--cx-red);
+}
+
+.cx-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.cx-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--cx-red);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  padding: 10px 18px;
+  border-radius: 24px;
+  box-shadow: 0 6px 16px rgba(229, 9, 20, 0.4);
+  transition: background 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+.cx-cta:hover {
+  background: var(--cx-red-dark);
+  transform: translateY(-1px);
+}
+
+.cx-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.cx-user__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cx-gold), #b9861c);
+  color: #201a08;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cx-user__meta {
+  display: none;
+  flex-direction: column;
+  line-height: 1.2;
+}
+@media (min-width: 860px) {
+  .cx-user__meta {
+    display: flex;
+  }
+}
+.cx-user__name {
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cx-user__points {
+  color: var(--cx-gold);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cx-logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #d7d9e0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.cx-logout:hover {
+  border-color: var(--cx-red);
+  color: #fff;
+}
+
+.cx-burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
 }
-
-.cl-nav-logout:hover {
-  border-color: #e50914;
-  color: #e50914;
+.cx-burger span {
+  display: block;
+  height: 2px;
+  background: #fff;
+  border-radius: 2px;
 }
 
-.cl-content {
+@media (max-width: 860px) {
+  .cx-links {
+    position: absolute;
+    top: 68px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    background: var(--cx-black-2);
+    padding: 8px;
+    gap: 2px;
+    display: none;
+    border-bottom: 3px solid var(--cx-red);
+  }
+  .cx-links.open {
+    display: flex;
+  }
+  .cx-link {
+    padding: 12px 14px;
+  }
+  .cx-burger {
+    display: flex;
+  }
+}
+
+.cx-content {
   flex: 1;
-  background: #f4f5f8;
-  padding: 32px 16px;
+  padding: 28px 16px 48px;
+}
+
+.cx-footer {
+  background: var(--cx-black);
+  color: #9799a3;
+  padding: 28px 16px;
+  margin-top: auto;
+}
+.cx-footer__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+.cx-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13.5px;
+  margin-bottom: 8px;
+}
+.cx-footer__brand img {
+  height: 26px;
+  width: 26px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+}
+.cx-footer p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+.cx-footer__copy {
+  opacity: 0.6;
+  margin-top: 10px;
 }

@@ -15,6 +15,8 @@ import { EmployeesModule } from './employees/employees.module';
 import { ShowtimesModule } from './showtimes/showtimes.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { SeatLocksModule } from './seat-locks/seat-locks.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 // Thành viên 3
 import { PaymentsModule } from './payments/payments.module';
@@ -25,6 +27,9 @@ import { FoodOrdersModule } from './food-orders/food-orders.module';
 import { CookiesModule } from './cookies/cookies.module';
 import { SessionModule } from './session/session.module';
 import { AuthModule } from './auth/auth.module';
+
+// Upload ảnh (poster phim, ảnh sản phẩm...)
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -57,6 +62,8 @@ import { AuthModule } from './auth/auth.module';
     ShowtimesModule,
     BookingsModule,
     TicketsModule,
+    SeatLocksModule,
+    CheckoutModule,
 
     // Thành viên 3
     PaymentsModule,
@@ -67,6 +74,7 @@ import { AuthModule } from './auth/auth.module';
     CookiesModule,
     SessionModule,
     AuthModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

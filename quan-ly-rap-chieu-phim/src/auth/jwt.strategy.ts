@@ -15,15 +15,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: { sub: number; email: string; role?: string }) {
-    if (payload.role) {
-      // Token của nhân viên/admin (có role) -> gán employee_id + role
+    if (payload.role === 'admin' || payload.role === 'employee') {
+      // Token của nhân viên/admin -> gán employee_id + role
       return {
         employee_id: payload.sub,
         email: payload.email,
         role: payload.role,
       };
     }
-    // Token của khách hàng -> không có role
-    return { customer_id: payload.sub, email: payload.email };
+    // Token của khách hàng -> luôn gán role = 'customer' để RolesGuard
+    // có thể dùng @Roles('customer') phân biệt với admin/employee.
+    return { customer_id: payload.sub, email: payload.email, role: 'customer' };
   }
 }

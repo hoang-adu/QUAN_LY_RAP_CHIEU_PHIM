@@ -5,6 +5,7 @@ import React, { useMemo, useState } from "react";
 import DataTable from "../pages/DataTable";
 import Modal from "./Modal";
 import ConfirmDialog from "./ConfirmDialog";
+import ImageField from "./ImageField";
 import { useToast } from "./ToastContext";
 import { createItem, updateItem, removeItem } from "../api/apiClient";
 import "./ui.css";
@@ -44,6 +45,8 @@ export default function CrudSection({
   searchable = true,
   searchKeys, // mảng key dùng để tìm kiếm; mặc định dùng tất cả cột hiển thị
   extraHeaderButton,
+  renderDetail, // (row) => ReactNode — nếu truyền vào: bấm dòng/nút "Xem" sẽ mở modal thông tin chi tiết (chỉ xem)
+  detailTitle, // (row) => string — tiêu đề modal chi tiết, mặc định dùng title chung
 }) {
   const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
@@ -54,6 +57,7 @@ export default function CrudSection({
   const [confirmRow, setConfirmRow] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [detailRow, setDetailRow] = useState(null);
 
   const filtered = useMemo(() => {
     if (!searchable || !keyword.trim()) return rows;
@@ -69,6 +73,14 @@ export default function CrudSection({
     setValues(emptyValuesFromFields(fields));
     setFormError(null);
     setModalOpen(true);
+  }
+
+  function openDetail(row) {
+    setDetailRow(row);
+  }
+
+  function closeDetail() {
+    setDetailRow(null);
   }
 
   function openEdit(row) {
@@ -168,6 +180,7 @@ export default function CrudSection({
         loading={loading}
         error={error}
         columns={columns}
+        onRowClick={renderDetail ? openDetail : undefined}
         actions={
           canEdit || canDelete
             ? (row) => (
@@ -232,6 +245,13 @@ export default function CrudSection({
                     placeholder={f.placeholder}
                     onChange={(e) => setField(f.name, e.target.value)}
                   />
+                ) : f.type === "image" ? (
+                  <ImageField
+                    value={values[f.name] ?? ""}
+                    onChange={(v) => setField(f.name, v)}
+                    folder={f.folder}
+                    placeholder={f.placeholder}
+                  />
                 ) : (
                   <input
                     type={f.type || "text"}
@@ -243,6 +263,8 @@ export default function CrudSection({
                     }
                     onChange={(e) => setField(f.name, e.target.value)}
                     step={f.type === "number" ? f.step || "any" : undefined}
+                    min={typeof f.min === "function" ? f.min(editingRow) : f.min}
+                    max={typeof f.max === "function" ? f.max(editingRow) : f.max}
                     disabled={
                       typeof f.disabled === "function" ? f.disabled(editingRow) : f.disabled
                     }
@@ -262,6 +284,17 @@ export default function CrudSection({
           </div>
         </form>
       </Modal>
+
+      {renderDetail && (
+        <Modal
+          open={!!detailRow}
+          onClose={closeDetail}
+          title={detailRow ? (detailTitle ? detailTitle(detailRow) : title) : ""}
+          width={680}
+        >
+          {detailRow && renderDetail(detailRow)}
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={!!confirmRow}

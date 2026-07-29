@@ -1,78 +1,287 @@
 /* src/pages/customerAccount.css */
+/* Trang tài khoản khách hàng — thẻ thành viên + danh sách vé "vé xé",
+   phong cách CGV / Lotte Cinema. */
 
-.account-page {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f4f5f8;
-  padding: 40px 16px;
+.ac-wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .ac-wrap {
+    grid-template-columns: 1fr;
+  }
 }
 
-.account-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
-  padding: 36px 32px;
-  width: 100%;
-  max-width: 380px;
-  text-align: center;
+/* ---------- Thẻ thành viên ---------- */
+.ac-membercard {
+  background: linear-gradient(150deg, #1d1f24 0%, #141518 65%, #2a0709 100%);
+  border-radius: 16px;
+  padding: 24px 22px 26px;
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(20, 21, 24, 0.25);
+  position: sticky;
+  top: 84px;
 }
-
-.account-avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: #e50914;
-  color: #ffffff;
-  font-size: 28px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-}
-
-.account-card h2 {
-  margin: 0 0 4px;
-  font-size: 20px;
-  color: #222222;
-}
-
-.account-sub {
-  margin: 0 0 24px;
-  font-size: 13px;
-  color: #888888;
-}
-
-.account-info {
-  text-align: left;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
-  padding: 16px 0;
-  margin-bottom: 24px;
-}
-
-.account-info-row {
+.ac-membercard__top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  font-size: 13.5px;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: #b5b8c2;
+  margin-bottom: 18px;
 }
-
-.account-info-row span {
-  color: #888888;
+.ac-membercard__tier {
+  background: #d9a441;
+  color: #1a1408;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.4px;
 }
-
-.account-info-row strong {
-  color: #222222;
+.ac-membercard__avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e50914, #7a0d12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.ac-membercard__name {
+  font-size: 17px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+.ac-membercard__points {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #cfd1d8;
+  margin-bottom: 16px;
+}
+.ac-membercard__points strong {
+  font-size: 16px;
+  color: #d9a441;
+}
+.ac-membercard__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.18);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.18);
+  margin-bottom: 18px;
+}
+.ac-membercard__grid div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.ac-membercard__grid span {
+  color: #9799a3;
+}
+.ac-membercard__grid strong {
+  color: #fff;
   font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 65%;
+  white-space: nowrap;
 }
-
-.account-book-link {
+.ac-membercard__cta {
   display: block;
   text-align: center;
+  background: #e50914;
+  color: #fff;
   text-decoration: none;
-  box-sizing: border-box;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(229, 9, 20, 0.35);
+}
+.ac-membercard__cta:hover {
+  background: #b8060f;
+}
+
+/* ---------- Danh sách vé ---------- */
+.ac-tickets__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ac-tickets__head h3 {
+  margin: 0;
+  font-size: 17px;
+  color: #16171b;
+}
+.ac-badge {
+  background: #fff2e0;
+  color: #b9861c;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.ac-empty {
+  background: #fff;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  color: #8a8d99;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.ac-empty__icon {
+  font-size: 32px;
+}
+.ac-empty a {
+  color: #e50914;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ac-ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ac-ticket {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(20, 21, 24, 0.06);
+  position: relative;
+}
+.ac-ticket::before {
+  /* Đường răng cưa giữa vé, giống vé xem phim thật */
+  content: "";
+  position: absolute;
+  right: 160px;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed #e3e4e9;
+}
+.ac-ticket.picked {
+  opacity: 0.75;
+}
+
+.ac-ticket__main {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  min-width: 0;
+}
+.ac-ticket__poster {
+  width: 52px;
+  height: 68px;
+  border-radius: 8px;
+  background: linear-gradient(150deg, #e5484d, #7a0d12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.ac-ticket__poster--img {
+  object-fit: cover;
+  background: #eef1f8;
+}
+.ac-ticket__body {
+  min-width: 0;
+}
+.ac-ticket__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.ac-ticket__title-row strong {
+  font-size: 14px;
+  color: #16171b;
+}
+.ac-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b9861c;
+  background: #fff8e6;
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+.ac-status.picked {
+  color: #2f9e6e;
+  background: #eafaf2;
+}
+.ac-ticket__meta {
+  font-size: 12px;
+  color: #6b6f7c;
+  margin-bottom: 3px;
+}
+
+.ac-ticket__stub {
+  background: #16171b;
+  color: #fff;
+  padding: 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+}
+.ac-ticket__code-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #9799a3;
+}
+.ac-ticket__code {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #d9a441;
+  margin-bottom: 6px;
+}
+.ac-ticket__order {
+  font-size: 11px;
+  color: #cfd1d8;
+}
+.ac-ticket__price {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .ac-ticket {
+    grid-template-columns: 1fr;
+  }
+  .ac-ticket::before {
+    display: none;
+  }
+  .ac-ticket__stub {
+    border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  }
 }

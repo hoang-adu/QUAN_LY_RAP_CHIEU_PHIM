@@ -274,6 +274,19 @@
   cursor: not-allowed;
   text-decoration: line-through;
 }
+/* Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock còn hiệu lực) — khác "đã bán"
+   vì ghế này có thể trống lại sau ít phút nếu người kia không thanh toán. */
+.seat-btn.held {
+  background: #fff8e6;
+  color: #b9861c;
+  border-color: #e5b93c;
+  cursor: not-allowed;
+  animation: seat-held-pulse 1.6s ease-in-out infinite;
+}
+@keyframes seat-held-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 .seat-btn.selected {
   background: var(--orange, #f0862a);
   color: #fff;
@@ -317,6 +330,10 @@
 }
 .dot.selected {
   background: var(--orange, #f0862a);
+}
+.dot.held {
+  background: #fff8e6;
+  border: 1px solid #e5b93c;
 }
 
 /* ---------- Stats bars (đơn giản, không cần thư viện chart) ---------- */
@@ -397,4 +414,40 @@
   .qlrcp-content {
     padding: 0 !important;
   }
+}
+/* ---------- ImageField (poster/ảnh: dán URL hoặc tải lên) ---------- */
+.ui-image-field__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ui-image-field__row input[type="text"] {
+  flex: 1;
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.8px;
+  font-family: inherit;
+  color: var(--text-dark, #1d2739);
+}
+.ui-image-field__row input[type="text"]:focus {
+  outline: 2px solid var(--navy-light, #1f3566);
+}
+.ui-image-field__row .ui-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ui-image-field__error {
+  color: #b8232a;
+  font-size: 11.5px;
+  margin-top: 6px;
+}
+.ui-image-field__preview {
+  display: block;
+  margin-top: 8px;
+  max-height: 120px;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e3e7f1);
+  object-fit: cover;
 }

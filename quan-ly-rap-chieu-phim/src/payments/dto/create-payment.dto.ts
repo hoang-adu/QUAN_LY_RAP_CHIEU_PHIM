@@ -5,6 +5,7 @@ import {
   IsNumber,
   Min,
   IsString,
+  IsIn,
 } from 'class-validator';
 
 export class CreatePaymentDto {
@@ -24,4 +25,11 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   payment_status?: string;
+
+  // LƯU Ý: giá trị client gửi lên (nếu có) sẽ bị PaymentsController ghi đè
+  // theo role thực tế của người gọi API — field này không phải nguồn tin
+  // cậy để xác định kênh thanh toán.
+  @IsIn(['online', 'counter'])
+  @IsOptional()
+  channel?: 'online' | 'counter';
 }

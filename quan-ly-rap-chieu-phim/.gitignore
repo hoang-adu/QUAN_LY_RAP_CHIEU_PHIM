@@ -3,6 +3,9 @@
 /node_modules
 /build
 
+# file ảnh upload (poster phim, ảnh sản phẩm...)
+/uploads
+
 # Logs
 logs
 *.log

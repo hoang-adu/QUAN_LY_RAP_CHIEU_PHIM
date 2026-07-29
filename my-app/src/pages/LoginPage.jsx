@@ -121,14 +121,25 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       {/* Header trắng giữ nguyên khoảng trắng phía trên */}
-      <header className="login-header">
-        <div className="login-header__inner">
-          <div className="login-header__brand">
-            <img src={logo} alt="Logo" />
-            <span>RẠP PHIM MẶT TRỜI NHỎ</span>
-          </div>
-        </div>
-      </header>
+<header className="login-header">
+  <div className="login-header__inner">
+    {/* Tên rạp phim nằm bên trái */}
+    <div className="login-header__brand">
+      <img src={logo} alt="Logo" />
+      <span>RẠP PHIM MẶT TRỜI NHỎ</span>
+    </div>
+    
+    {/* Icon cờ và chữ VN nằm bên phải */}
+    <span className="login-header__lang">
+      <svg xmlns="http://w3.org" viewBox="0 0 30 20" width="22.5" height="15">
+        <rect width="30" height="20" fill="#da251d"/>
+        <polygon points="15,4 16.18,7.63 20,7.63 16.91,9.88 18.09,13.51 15,11.25 11.91,13.51 13.09,9.88 10,7.63 13.82,7.63" fill="#ffff00"/>
+      </svg>
+      VN
+    </span>
+  </div>
+</header>
+
 
       {/* Hero section dùng nền hình ảnh rạp phim */}
       <div

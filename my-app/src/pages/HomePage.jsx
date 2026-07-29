@@ -1,20 +1,26 @@
 // src/pages/HomePage.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getList } from "../api/apiClient";
+import { isAdmin } from "../api/auth";
 import "./table.css";
 
 // Trang chủ: gọi song song nhiều API thật để đếm số lượng bản ghi hiện có.
+// to: route tương ứng để bấm vào mục là chuyển sang trang quản lý mục đó.
+// adminOnly: true -> chỉ admin mới được bấm vào (khớp với quyền route /employees, /stats).
 const STAT_SOURCES = [
-  { key: "movies", label: "Phim", icon: "🎞️" },
-  { key: "rooms", label: "Phòng chiếu", icon: "🏛️" },
-  { key: "showtimes", label: "Suất chiếu", icon: "🕒" },
-  { key: "bookings", label: "Đơn đặt vé", icon: "🎟️" },
-  { key: "customers", label: "Khách hàng", icon: "👤" },
-  { key: "employees", label: "Nhân viên", icon: "🧑‍💼" },
-  { key: "products", label: "Sản phẩm", icon: "🍿" },
+  { key: "movies", label: "Phim", icon: "🎞️", to: "/movies" },
+  { key: "rooms", label: "Phòng chiếu", icon: "🏛️", to: "/rooms" },
+  { key: "showtimes", label: "Suất chiếu", icon: "🕒", to: "/showtimes" },
+  { key: "bookings", label: "Đơn đặt vé", icon: "🎟️", to: "/bookings" },
+  { key: "customers", label: "Khách hàng", icon: "👤", to: "/customers" },
+  { key: "employees", label: "Nhân viên", icon: "🧑‍💼", to: "/employees", adminOnly: true },
+  { key: "products", label: "Sản phẩm", icon: "🍿", to: "/products" },
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const admin = isAdmin();
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,16 +68,37 @@ export default function HomePage() {
 
       {!loading && !error && (
         <div className="stat-grid">
-          {STAT_SOURCES.map((s) => (
-            <div className="stat-card" key={s.key}>
-              <div className="num">
-                {counts[s.key] === null ? "—" : counts[s.key] ?? "…"}
+          {STAT_SOURCES.map((s) => {
+            // Nhân viên (không phải admin) không có quyền vào mục Nhân viên —
+            // khớp với AdminRoute + Sidebar, nên thẻ này bị khóa, không cho bấm.
+            const locked = s.adminOnly && !admin;
+            return (
+              <div
+                className={
+                  "stat-card" + (locked ? " stat-card--locked" : " stat-card--clickable")
+                }
+                key={s.key}
+                role="button"
+                tabIndex={locked ? -1 : 0}
+                title={locked ? "Bạn không có quyền truy cập mục này" : `Xem ${s.label}`}
+                onClick={() => {
+                  if (locked) return;
+                  navigate(s.to);
+                }}
+                onKeyDown={(e) => {
+                  if (!locked && (e.key === "Enter" || e.key === " ")) navigate(s.to);
+                }}
+              >
+                <div className="num">
+                  {counts[s.key] === null ? "—" : counts[s.key] ?? "…"}
+                </div>
+                <div className="label">
+                  {s.icon} {s.label}
+                  {locked && <span className="stat-card__lock"> 🔒</span>}
+                </div>
               </div>
-              <div className="label">
-                {s.icon} {s.label}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import useApiList from "../api/useApiList";
 import "./table.css";
 import "../components/ui.css";
@@ -50,8 +51,8 @@ export default function StatsPage() {
     return c;
   }, [bookings.rows]);
 
-  // Doanh thu theo ngày trong khoảng đã chọn
-  const revenueByDay = useMemo(() => {
+  // Doanh thu theo ngày trong TOÀN BỘ khoảng đã chọn (dùng để xuất Excel).
+  const revenueByDayFull = useMemo(() => {
     const map = {};
     paidPayments.forEach((p) => {
       const key = toDateKey(p.payment_date);
@@ -65,8 +66,12 @@ export default function StatsPage() {
       days.push({ key, label: `${cur.getDate()}/${cur.getMonth() + 1}`, value: map[key] || 0 });
       cur.setDate(cur.getDate() + 1);
     }
-    return days.slice(-14); // tối đa 14 cột cho gọn
+    return days;
   }, [paidPayments, fromDate, toDate]);
+
+  // Biểu đồ chỉ hiện tối đa 14 cột gần nhất cho gọn; file Excel xuất đủ cả
+  // khoảng ngày đã chọn (revenueByDayFull).
+  const revenueByDay = useMemo(() => revenueByDayFull.slice(-14), [revenueByDayFull]);
 
   const maxDay = Math.max(1, ...revenueByDay.map((d) => d.value));
 
@@ -90,15 +95,53 @@ export default function StatsPage() {
 
   const maxTicketCount = Math.max(1, ...topMovies.map((m) => m.count));
 
+  function handleExportExcel() {
+    const workbook = XLSX.utils.book_new();
+
+    const overviewSheet = XLSX.utils.json_to_sheet([
+      { "Chỉ số": "Từ ngày", "Giá trị": fromDate },
+      { "Chỉ số": "Đến ngày", "Giá trị": toDate },
+      { "Chỉ số": "Doanh thu đã thu", "Giá trị": totalRevenue },
+      { "Chỉ số": "Đơn đã xác nhận", "Giá trị": bookingStatusCounts.confirmed },
+      { "Chỉ số": "Đơn chờ xử lý", "Giá trị": bookingStatusCounts.pending },
+      { "Chỉ số": "Đơn đã hủy", "Giá trị": bookingStatusCounts.cancelled },
+    ]);
+    XLSX.utils.book_append_sheet(workbook, overviewSheet, "Tong quan");
+
+    const revenueSheet = XLSX.utils.json_to_sheet(
+      revenueByDayFull.map((d) => ({ "Ngày": d.key, "Doanh thu (đ)": d.value })),
+    );
+    XLSX.utils.book_append_sheet(workbook, revenueSheet, "Doanh thu theo ngay");
+
+    const topMoviesSheet = XLSX.utils.json_to_sheet(
+      topMovies.map((m, idx) => ({
+        "Hạng": idx + 1,
+        "Phim": m.name,
+        "Số vé bán ra": m.count,
+      })),
+    );
+    XLSX.utils.book_append_sheet(workbook, topMoviesSheet, "Top phim");
+
+    XLSX.writeFile(workbook, `thong-ke_${fromDate}_den_${toDate}.xlsx`);
+  }
+
   return (
     <>
       <div className="page-head">
         <div>
           <div className="page-title">Thống kê</div>
           <div className="page-sub">
-            Doanh thu, số vé bán ra 
+            Doanh thu, số vé bán ra
           </div>
         </div>
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary"
+          onClick={handleExportExcel}
+          disabled={loading}
+        >
+          📊 Xuất Excel
+        </button>
       </div>
 
       <div className="stat-filter-row">

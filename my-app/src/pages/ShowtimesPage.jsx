@@ -53,6 +53,33 @@ export default function ShowtimesPage() {
     [showtimes.rows, movieNameById, roomNameById],
   );
 
+  // "sortKey" ghép ngày + giờ thành 1 chuỗi để so sánh sớm/muộn cho đúng —
+  // so trực tiếp show_date rồi mới tới start_time nếu trùng ngày.
+  const sortKey = (row) => `${row.show_date || ""} ${row.start_time || ""}`;
+  const SORT_OPTIONS = [
+    {
+      value: "date_asc",
+      label: "Suất chiếu: Sớm nhất",
+      sort: (a, b) => sortKey(a).localeCompare(sortKey(b)),
+    },
+    {
+      value: "date_desc",
+      label: "Suất chiếu: Muộn nhất",
+      sort: (a, b) => sortKey(b).localeCompare(sortKey(a)),
+    },
+  ];
+
+  // Lọc theo phim bằng dropdown (chọn tên phim có sẵn) thay vì phải gõ đúng
+  // tên/ID phim vào ô tìm kiếm.
+  const FILTER_OPTIONS = [
+    {
+      key: "movie_title",
+      label: "phim",
+      allLabel: "Tất cả phim",
+      getValues: (row) => [row.movie_title].filter(Boolean),
+    },
+  ];
+
   const FIELDS = [
     { name: "movie_id", label: "Phim", type: "select", options: movieOptions, required: true },
     { name: "room_id", label: "Phòng chiếu", type: "select", options: roomOptions, required: true },
@@ -86,6 +113,8 @@ export default function ShowtimesPage() {
       canDelete={admin}
       toDto={(v) => ({ ...v, movie_id: Number(v.movie_id), room_id: Number(v.room_id) })}
       searchKeys={["showtime_id", "movie_title", "room_name", "show_date"]}
+      sortOptions={SORT_OPTIONS}
+      filterOptions={FILTER_OPTIONS}
       columns={[
         { key: "showtime_id", label: "Mã suất" },
         { key: "movie_id", label: "Phim", render: (v) => movieNameById[String(v)] || `#${v}` },

@@ -6,6 +6,7 @@ import DataTable from "../pages/DataTable";
 import Modal from "./Modal";
 import ConfirmDialog from "./ConfirmDialog";
 import ImageField from "./ImageField";
+import TagsField from "./TagsField";
 import { useToast } from "./ToastContext";
 import { createItem, updateItem, removeItem } from "../api/apiClient";
 import "./ui.css";
@@ -47,6 +48,14 @@ export default function CrudSection({
   extraHeaderButton,
   renderDetail, // (row) => ReactNode — nếu truyền vào: bấm dòng/nút "Xem" sẽ mở modal thông tin chi tiết (chỉ xem)
   detailTitle, // (row) => string — tiêu đề modal chi tiết, mặc định dùng title chung
+  // Bộ lọc chọn nhanh (dropdown) — dùng cho các trường khó gõ đúng chính tả
+  // (thể loại, trạng thái...) thay vì bắt người dùng gõ tìm kiếm.
+  // filterOptions: [{ key, label, allLabel?, getValues: (row) => string[] }]
+  filterOptions,
+  // Sắp xếp nhanh (dropdown) — vd. "Mới nhất / Cũ nhất".
+  // sortOptions: [{ value, label, sort?: (a,b) => number }] — option đầu
+  // tiên là lựa chọn mặc định khi mở trang.
+  sortOptions,
 }) {
   const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
@@ -58,8 +67,11 @@ export default function CrudSection({
   const [deleting, setDeleting] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [detailRow, setDetailRow] = useState(null);
+  const [filterValues, setFilterValues] = useState({});
+  const [sortValue, setSortValue] = useState(sortOptions?.[0]?.value ?? "");
 
-  const filtered = useMemo(() => {
+  // Ô tìm kiếm gõ chữ — giữ nguyên như cũ, không thay thế.
+  const searched = useMemo(() => {
     if (!searchable || !keyword.trim()) return rows;
     const kw = keyword.trim().toLowerCase();
     const keys = searchKeys || columns.map((c) => c.key);
@@ -67,6 +79,47 @@ export default function CrudSection({
       keys.some((k) => String(r[k] ?? "").toLowerCase().includes(kw)),
     );
   }, [rows, keyword, searchable, searchKeys, columns]);
+
+  // Danh sách giá trị duy nhất cho từng dropdown lọc (vd. các thể loại đang
+  // có trong dữ liệu thật) — tự suy ra từ rows, không cần khai báo cứng.
+  const filterValueLists = useMemo(() => {
+    const map = {};
+    (filterOptions || []).forEach((opt) => {
+      const set = new Set();
+      rows.forEach((r) => {
+        const vals = opt.getValues ? opt.getValues(r) : [r[opt.key]];
+        (vals || []).forEach((v) => {
+          const s = v === null || v === undefined ? "" : String(v).trim();
+          if (s) set.add(s);
+        });
+      });
+      map[opt.key] = Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+    });
+    return map;
+  }, [rows, filterOptions]);
+
+  // Áp các dropdown lọc (chọn giá trị có sẵn, không cần gõ) lên trên kết quả
+  // tìm kiếm — người dùng có thể kết hợp cả gõ tìm kiếm lẫn chọn dropdown.
+  const filteredByDropdowns = useMemo(() => {
+    if (!filterOptions || filterOptions.length === 0) return searched;
+    return filterOptions.reduce((acc, opt) => {
+      const val = filterValues[opt.key];
+      if (!val) return acc;
+      return acc.filter((r) => {
+        const vals = opt.getValues ? opt.getValues(r) : [r[opt.key]];
+        return (vals || []).map(String).includes(val);
+      });
+    }, searched);
+  }, [searched, filterOptions, filterValues]);
+
+  // Sắp xếp nhanh (vd. mới nhất/cũ nhất) — áp sau cùng để không ảnh hưởng
+  // tới việc tìm kiếm/lọc phía trên.
+  const filtered = useMemo(() => {
+    if (!sortOptions) return filteredByDropdowns;
+    const opt = sortOptions.find((o) => o.value === sortValue);
+    if (!opt || !opt.sort) return filteredByDropdowns;
+    return [...filteredByDropdowns].sort(opt.sort);
+  }, [filteredByDropdowns, sortOptions, sortValue]);
 
   function openCreate() {
     setEditingRow(null);
@@ -164,14 +217,46 @@ export default function CrudSection({
         </div>
       </div>
 
-      {searchable && (
+      {(searchable || filterOptions?.length > 0 || sortOptions?.length > 0) && (
         <div className="ui-table-toolbar">
-          <input
-            className="ui-table-search"
-            placeholder="🔍 Tìm kiếm..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
+          {searchable && (
+            <input
+              className="ui-table-search"
+              placeholder="🔍 Tìm kiếm..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+          )}
+          {(filterOptions || []).map((opt) => (
+            <select
+              key={opt.key}
+              className="ui-table-select"
+              value={filterValues[opt.key] ?? ""}
+              onChange={(e) =>
+                setFilterValues((v) => ({ ...v, [opt.key]: e.target.value }))
+              }
+            >
+              <option value="">{opt.allLabel || `Tất cả ${opt.label}`}</option>
+              {(filterValueLists[opt.key] || []).map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          ))}
+          {sortOptions?.length > 0 && (
+            <select
+              className="ui-table-select"
+              value={sortValue}
+              onChange={(e) => setSortValue(e.target.value)}
+            >
+              {sortOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 
@@ -250,6 +335,13 @@ export default function CrudSection({
                     value={values[f.name] ?? ""}
                     onChange={(v) => setField(f.name, v)}
                     folder={f.folder}
+                    placeholder={f.placeholder}
+                  />
+                ) : f.type === "tags" ? (
+                  <TagsField
+                    value={values[f.name] ?? ""}
+                    onChange={(v) => setField(f.name, v)}
+                    options={typeof f.options === "function" ? f.options() : f.options || []}
                     placeholder={f.placeholder}
                   />
                 ) : (

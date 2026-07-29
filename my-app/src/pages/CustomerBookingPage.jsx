@@ -11,6 +11,7 @@ import { createItem, resolveAssetUrl } from "../api/apiClient";
 import useSeatLocks from "../api/useSeatLocks";
 import { getCustomerId } from "../api/auth";
 import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
+import { splitList } from "./MoviesPage";
 import { useToast } from "../components/ToastContext";
 import Modal from "../components/Modal";
 import CustomerLayout from "../layout/CustomerLayout";
@@ -82,6 +83,13 @@ export default function CustomerBookingPage() {
   const [successInfo, setSuccessInfo] = useState(null);
   const [detailMovie, setDetailMovie] = useState(null);
 
+  // Lọc theo thể loại (chọn dropdown, không cần gõ) + sắp xếp phim theo
+  // ngày khởi chiếu — dành cho khách chưa biết tên phim/thể loại tiếng Anh.
+  const [genreFilter, setGenreFilter] = useState("");
+  const [movieSort, setMovieSort] = useState("newest"); // "newest" | "oldest"
+  // Sắp xếp suất chiếu theo giờ trong ngày — sớm nhất hoặc muộn nhất trước.
+  const [showtimeSort, setShowtimeSort] = useState("earliest");
+
   // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn.
   const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
 
@@ -95,6 +103,25 @@ export default function CustomerBookingPage() {
     [showtimes.rows, movieId],
   );
 
+  // Danh sách thể loại để chọn trong dropdown, tự suy ra từ dữ liệu phim
+  // thật (không gõ tên thể loại, chỉ chọn).
+  const genreOptions = useMemo(() => {
+    const set = new Set();
+    movies.rows.forEach((m) => splitList(m.genre).forEach((g) => set.add(g)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [movies.rows]);
+
+  // Phim hiển thị ở bước 1: lọc theo thể loại đã chọn + sắp xếp mới/cũ nhất.
+  const displayedMovies = useMemo(() => {
+    return movies.rows
+      .filter((m) => !genreFilter || splitList(m.genre).includes(genreFilter))
+      .slice()
+      .sort((a, b) => {
+        const cmp = (a.release_date || "").localeCompare(b.release_date || "");
+        return movieSort === "oldest" ? cmp : -cmp;
+      });
+  }, [movies.rows, genreFilter, movieSort]);
+
   // Nhóm suất chiếu theo ngày để hiển thị dạng tab ngày (giống CGV/Lotte).
   const showtimesByDate = useMemo(() => {
     const map = new Map();
@@ -103,13 +130,17 @@ export default function CustomerBookingPage() {
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(s);
     }
+    const timeCmp = (a, b) => {
+      const cmp = String(a.start_time).localeCompare(String(b.start_time));
+      return showtimeSort === "latest" ? -cmp : cmp;
+    };
     return Array.from(map.entries())
       .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
       .map(([date, list]) => ({
         date,
-        list: list.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time))),
+        list: list.sort(timeCmp),
       }));
-  }, [showtimesForMovie]);
+  }, [showtimesForMovie, showtimeSort]);
 
   const [activeDate, setActiveDate] = useState(null);
   const effectiveDate = activeDate || showtimesByDate[0]?.date || null;
@@ -322,8 +353,28 @@ export default function CustomerBookingPage() {
                 <h3 className="cb-section__title">
                   <span className="cb-section__num">1</span> Chọn phim
                 </h3>
+                <div className="cb-movie-toolbar">
+                  <select
+                    className="cb-movie-toolbar__select"
+                    value={genreFilter}
+                    onChange={(e) => setGenreFilter(e.target.value)}
+                  >
+                    <option value="">Tất cả thể loại</option>
+                    {genreOptions.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="cb-movie-toolbar__select"
+                    value={movieSort}
+                    onChange={(e) => setMovieSort(e.target.value)}
+                  >
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                  </select>
+                </div>
                 <div className="cb-movie-grid">
-                  {movies.rows.map((m, idx) => (
+                  {displayedMovies.map((m, idx) => (
                     <div
                       className={
                         "cb-movie-card" + (String(movieId) === String(m.movie_id) ? " selected" : "")
@@ -356,8 +407,12 @@ export default function CustomerBookingPage() {
                       </div>
                     </div>
                   ))}
-                  {movies.rows.length === 0 && (
-                    <div className="cb-status">Hiện chưa có phim nào đang chiếu.</div>
+                  {displayedMovies.length === 0 && (
+                    <div className="cb-status">
+                      {movies.rows.length === 0
+                        ? "Hiện chưa có phim nào đang chiếu."
+                        : "Không có phim nào khớp với thể loại đã chọn."}
+                    </div>
                   )}
                 </div>
               </section>
@@ -367,6 +422,16 @@ export default function CustomerBookingPage() {
                 <section className="cb-section">
                   <h3 className="cb-section__title">
                     <span className="cb-section__num">2</span> Chọn suất chiếu
+                    {showtimesForMovie.length > 0 && (
+                      <select
+                        className="cb-movie-toolbar__select cb-section__title-select"
+                        value={showtimeSort}
+                        onChange={(e) => setShowtimeSort(e.target.value)}
+                      >
+                        <option value="earliest">Suất sớm nhất</option>
+                        <option value="latest">Suất muộn nhất</option>
+                      </select>
+                    )}
                   </h3>
                   {showtimesForMovie.length === 0 ? (
                     <div className="cb-status">Phim này chưa có suất chiếu nào.</div>
@@ -470,13 +535,22 @@ export default function CustomerBookingPage() {
                       </div>
 
                       <div className="cb-legend">
-                        <span><i className="cb-dot avail" /> Còn trống</span>
-                        <span><i className="cb-dot selected" /> Đang chọn</span>
-                        <span><i className="cb-dot held" /> Đang giữ</span>
-                        <span><i className="cb-dot taken" /> Đã bán</span>
-                        <span><i className="cb-dot vip" /> {SEAT_TYPE_LABELS.vip} · {priceForSeatType("vip").toLocaleString("vi-VN")}đ</span>
-                        <span><i className="cb-dot couple" /> {SEAT_TYPE_LABELS.couple} · {priceForSeatType("couple").toLocaleString("vi-VN")}đ</span>
-                        <span><i className="cb-dot standard" /> {SEAT_TYPE_LABELS.standard} · {priceForSeatType("standard").toLocaleString("vi-VN")}đ</span>
+                        <div className="cb-legend__row">
+                          <span><i className="cb-dot avail" /> Còn trống</span>
+                          <span><i className="cb-dot selected" /> Đang chọn</span>
+                          <span><i className="cb-dot held" /> Đang giữ</span>
+                          <span><i className="cb-dot taken" /> Đã bán</span>
+                        </div>
+                        <div className="cb-legend__row cb-legend__row--types">
+                          {["standard", "vip", "couple"]
+                            .map((t) => ({ type: t, price: priceForSeatType(t) }))
+                            .sort((a, b) => a.price - b.price)
+                            .map(({ type, price }) => (
+                              <span key={type}>
+                                <i className={`cb-dot ${type}`} /> {SEAT_TYPE_LABELS[type]} · {price.toLocaleString("vi-VN")}đ
+                              </span>
+                            ))}
+                        </div>
                       </div>
                     </div>
                   )}

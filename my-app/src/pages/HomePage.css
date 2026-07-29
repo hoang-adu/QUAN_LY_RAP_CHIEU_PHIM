@@ -1,0 +1,277 @@
+/* src/pages/HomePage.css
+   Bố cục "Trang chủ" phỏng theo layout Phenikaa (bộ lọc + tab danh mục +
+   lưới thẻ card), dùng chung màu sắc (navy/orange) đã có sẵn trong
+   layout.css để đồng bộ với sidebar/topbar hiện tại. */
+
+/* ---------- Dải số liệu nhanh (giữ nguyên tinh thần bản cũ, thu gọn lại
+   thành 1 hàng chip để nhường chỗ chính cho phần lưới phim) ---------- */
+.home-quickstats {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 16px;
+}
+.home-chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+  white-space: nowrap;
+}
+.home-chip:hover {
+  border-color: var(--orange);
+  transform: translateY(-1px);
+}
+.home-chip--locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.home-chip b {
+  color: var(--navy);
+  font-size: 13.5px;
+}
+
+/* ---------- Thanh bộ lọc ---------- */
+.home-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+.home-filterbar__search {
+  flex: 2 1 240px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.home-filterbar__search input {
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 10px 0;
+  font-size: 13px;
+  width: 100%;
+  color: var(--text-dark);
+}
+.home-filterbar__date {
+  flex: 1 1 150px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.home-filterbar__date input {
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 10px 0;
+  font-size: 13px;
+  width: 100%;
+  color: var(--text-dark);
+}
+.home-filterbar__date span {
+  font-size: 12px;
+  color: var(--text-grey);
+  white-space: nowrap;
+}
+.home-filterbar__select {
+  flex: 1 1 170px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+}
+.home-filterbar__select span {
+  font-size: 12px;
+  color: var(--text-grey);
+  white-space: nowrap;
+}
+.home-filterbar__select select {
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 10px 0;
+  font-size: 13px;
+  width: 100%;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+.home-filterbar__clear {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-grey);
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.home-filterbar__clear:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* ---------- Tabs danh mục (Toàn bộ / Đang chiếu / Sắp chiếu) ---------- */
+.home-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+  padding: 0 2px;
+}
+.home-tab {
+  background: none;
+  border: none;
+  padding: 10px 2px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-grey);
+  cursor: pointer;
+  position: relative;
+}
+.home-tab .home-tab__count {
+  font-weight: 500;
+  color: var(--text-grey);
+  margin-left: 4px;
+}
+.home-tab--active {
+  color: var(--orange);
+}
+.home-tab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--orange);
+  border-radius: 2px;
+}
+
+/* ---------- Lưới thẻ phim ---------- */
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+.home-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.home-card:hover {
+  box-shadow: 0 10px 22px rgba(20, 21, 24, 0.08);
+  transform: translateY(-2px);
+}
+.home-card__media {
+  position: relative;
+  height: 132px;
+  background: linear-gradient(135deg, var(--navy-light), var(--navy));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.home-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.home-card__media-icon {
+  font-size: 34px;
+  opacity: 0.85;
+}
+.home-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  letter-spacing: 0.2px;
+}
+.home-card__badge--showing { background: #2f9e44; }
+.home-card__badge--upcoming { background: var(--orange); }
+
+.home-card__body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.home-card__title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.7em;
+}
+.home-card__meta {
+  font-size: 11.5px;
+  color: var(--text-grey);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.home-card__footer {
+  margin-top: auto;
+  padding-top: 6px;
+}
+.home-card__link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue-link);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.home-card__link:hover {
+  text-decoration: underline;
+}
+
+.home-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--text-grey);
+  font-size: 13px;
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}

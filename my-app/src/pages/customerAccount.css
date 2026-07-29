@@ -62,6 +62,7 @@
 }
 .ac-membercard__points {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   background: rgba(255, 255, 255, 0.08);
@@ -70,10 +71,30 @@
   font-size: 12px;
   color: #cfd1d8;
   margin-bottom: 16px;
+  gap: 8px;
 }
 .ac-membercard__points strong {
   font-size: 16px;
   color: #d9a441;
+}
+.ac-membercard__redeem-btn {
+  border: 1px solid rgba(217, 164, 65, 0.6);
+  background: transparent;
+  color: #d9a441;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ac-membercard__redeem-btn:hover {
+  background: rgba(217, 164, 65, 0.12);
+}
+.ac-membercard__redeem-note {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: #9a9ca5;
+  font-style: italic;
 }
 .ac-membercard__grid {
   display: flex;

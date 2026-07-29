@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import DataTable from "./DataTable";
@@ -144,10 +144,13 @@ export default function BookingsPage() {
     [bookings.rows],
   );
 
-  function customerNameForBooking(bookingId) {
-    const customerId = customerIdByBookingId[String(bookingId)];
-    return customerNameById[String(customerId)] || "—";
-  }
+  const customerNameForBooking = useCallback(
+    (bookingId) => {
+      const customerId = customerIdByBookingId[String(bookingId)];
+      return customerNameById[String(customerId)] || "—";
+    },
+    [customerIdByBookingId, customerNameById],
+  );
 
   // Tìm đơn theo mã đơn (booking_id) hoặc tên/SĐT khách hàng.
   // Gõ SỐ (mã đơn/SĐT) -> so khớp theo TIỀN TỐ (startsWith), không dùng
@@ -196,7 +199,7 @@ export default function BookingsPage() {
         movieTitle.toLowerCase().includes(kw)
       );
     });
-  }, [tickets.rows, ticketKw, customerIdByBookingId, customerNameById, showtimeById, movieById]);
+  }, [tickets.rows, ticketKw, customerIdByBookingId, customerNameById, showtimeById, movieById, customerNameForBooking]);
 
   async function changeStatus(row, status) {
     setUpdatingId(row.booking_id);

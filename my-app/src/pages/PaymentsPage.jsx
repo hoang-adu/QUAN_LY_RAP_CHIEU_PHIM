@@ -116,10 +116,11 @@ export default function PaymentsPage() {
           { key: "payment_status", label: "Trạng thái", render: statusBadge },
         ]}
         actions={(row) => {
-          // Thanh toán ONLINE đã 'paid' bị khóa hoàn toàn — không hoàn tiền,
-          // không sửa trạng thái (backend cũng chặn ở PaymentsService, đây
-          // chỉ là ẩn nút cho gọn UI, tránh nhân viên bấm rồi mới thấy lỗi).
-          const locked = row.channel === "online" && row.payment_status === "paid";
+          // Thanh toán đã 'paid' bị khóa hoàn toàn — không hoàn tiền, không
+          // sửa trạng thái, dù thu tiền online hay tại quầy (backend cũng
+          // chặn ở BookingsService, đây chỉ là ẩn nút cho gọn UI, tránh nhân
+          // viên bấm rồi mới thấy lỗi).
+          const locked = row.payment_status === "paid";
           if (locked) {
             return <span className="page-sub">🔒 Đã khóa (không hoàn tiền)</span>;
           }

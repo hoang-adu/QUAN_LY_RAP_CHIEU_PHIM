@@ -104,14 +104,15 @@ export default function BookingsPage() {
     [seats.rows],
   );
 
-  // Đơn nào đã thanh toán ONLINE thành công -> không cho hủy trên UI nữa
-  // (backend cũng chặn, nhưng disable sẵn ở đây để nhân viên không bấm nhầm
-  // rồi mới thấy lỗi). Đơn thanh toán tại quầy vẫn hủy được bình thường.
-  const paidOnlineBookingIds = useMemo(
+  // Đơn nào đã thanh toán (thu tiền) rồi -> không cho hủy trên UI nữa, dù
+  // thanh toán online hay tại quầy đều không hỗ trợ hoàn trả (backend cũng
+  // chặn, nhưng disable sẵn ở đây để nhân viên không bấm nhầm rồi mới thấy
+  // lỗi). Chỉ đơn CHƯA thanh toán mới hủy được.
+  const paidBookingIds = useMemo(
     () =>
       new Set(
         payments.rows
-          .filter((p) => p.channel === "online" && p.payment_status === "paid")
+          .filter((p) => p.payment_status === "paid")
           .map((p) => String(p.booking_id)),
       ),
     [payments.rows],
@@ -284,11 +285,11 @@ export default function BookingsPage() {
               <button
                 className="ui-btn ui-btn-danger ui-btn-sm"
                 disabled={
-                  updatingId === row.booking_id || paidOnlineBookingIds.has(String(row.booking_id))
+                  updatingId === row.booking_id || paidBookingIds.has(String(row.booking_id))
                 }
                 title={
-                  paidOnlineBookingIds.has(String(row.booking_id))
-                    ? "Đơn đã thanh toán online — không hỗ trợ hoàn tiền nên không thể hủy"
+                  paidBookingIds.has(String(row.booking_id))
+                    ? "Vé đã mua (đã thanh toán) — không hỗ trợ hoàn trả, dù mua online hay tại quầy"
                     : "Hủy đơn sẽ nhả lại ghế cho suất chiếu này"
                 }
                 onClick={() => changeStatus(row, "cancelled")}

@@ -55,18 +55,16 @@ export class BookingsService {
       updateBookingDto.status === 'cancelled' && booking.status !== 'cancelled';
 
     if (isCancelling) {
-      // Đơn đã thanh toán ONLINE thành công thì không được hủy ở đây — hủy
-      // sẽ nhả ghế miễn phí trong khi tiền khách trả đã thu, tương đương
-      // hoàn tiền trá hình, vi phạm đúng quy định "không hoàn tiền vé
-      // online". Đơn thanh toán tại quầy hoặc chưa thanh toán vẫn hủy được
-      // bình thường.
-      const paidOnline = await this.paymentRepository.findOne({
-        where: { booking_id: id, payment_status: 'paid', channel: 'online' },
+      // Vé đã mua (đã thanh toán) thì KHÔNG được hủy — dù mua online hay
+      // thanh toán trực tiếp tại quầy đều không hỗ trợ hoàn trả. Hủy sẽ
+      // nhả ghế miễn phí trong khi tiền khách trả đã thu, tương đương hoàn
+      // tiền trá hình. Chỉ đơn CHƯA thanh toán mới hủy được.
+      const paid = await this.paymentRepository.findOne({
+        where: { booking_id: id, payment_status: 'paid' },
       });
-      if (paidOnline) {
+      if (paid) {
         throw new BadRequestException(
-          `Đơn #${id} đã thanh toán ONLINE — không thể hủy (không hỗ trợ hoàn tiền). ` +
-            'Nếu khách không đến xem, giữ nguyên trạng thái đơn.',
+          `Đơn #${id} đã thanh toán — vé đã mua không được hoàn trả (dù mua online hay tại quầy).`,
         );
       }
     }
@@ -78,18 +76,11 @@ export class BookingsService {
       // Nhả ghế: xóa các dòng vé của đơn này để suất chiếu/ghế đó bán lại
       // được (NewBookingPage/CustomerBookingPage tính ghế "đã bán" dựa trên
       // sự tồn tại của dòng trong bảng tickets).
+      //
+      // Lưu ý: tại đây booking_id chắc chắn KHÔNG có payment 'paid' nào (đã
+      // chặn ở trên) — nên không cần bước đánh dấu 'refunded' cho payments
+      // nữa, đơn tới được đây nghĩa là chưa hề thu tiền.
       await this.ticketRepository.delete({ booking_id: id });
-
-      // Tại đây booking_id KHÔNG còn payment online 'paid' nào (đã chặn ở
-      // trên) — payment 'paid' còn lại (nếu có) chắc chắn là thu tại quầy.
-      // Đánh dấu 'refunded' để dữ liệu payments phản ánh đúng thực tế: đơn
-      // đã hủy thì không thể vẫn hiển thị "đã thanh toán" trên các bảng
-      // quản lý (PaymentsPage/BookingsPage), tránh gây hiểu nhầm khi đối
-      // soát doanh thu.
-      await this.paymentRepository.update(
-        { booking_id: id, payment_status: 'paid' },
-        { payment_status: 'refunded' },
-      );
     }
 
     return saved;

@@ -7,7 +7,7 @@ import { resolveAssetUrl } from "../api/apiClient";
 import "./table.css";
 import "./MoviesPage.css";
 
-function formatDate(iso) {
+export function formatDate(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -34,7 +34,7 @@ function formatDuration(mins) {
 
 // Tách chuỗi "A, B, C" thành từng phần tử (dùng cho thể loại / diễn viên) —
 // chấp nhận cả dấu phẩy lẫn dấu chấm phẩy, bỏ khoảng trắng thừa.
-function splitList(text) {
+export function splitList(text) {
   if (!text) return [];
   return text
     .split(/[,;]/)
@@ -45,7 +45,7 @@ function splitList(text) {
 // So ngày phát hành với hôm nay -> phim đang chiếu hay sắp chiếu. Đây chỉ là
 // suy luận hiển thị (không có cột "status" riêng trong DB) nên khi thiếu
 // release_date thì mặc định coi là đang chiếu.
-function movieStatus(releaseDate) {
+export function movieStatus(releaseDate) {
   if (!releaseDate) return { label: "Đang chiếu", cls: "showing" };
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -215,9 +215,8 @@ function MovieDetail({ row, showtimes, rooms }) {
   );
 }
 
-const FIELDS = [
+const BASE_FIELDS = [
   { name: "title", label: "Tên phim", required: true, fullWidth: true },
-  { name: "genre", label: "Thể loại", placeholder: "VD: Hành động, Viễn tưởng..." },
   { name: "duration", label: "Thời lượng (phút)", type: "number" },
   { name: "director", label: "Đạo diễn" },
   { name: "release_date", label: "Ngày khởi chiếu", type: "date" },
@@ -233,10 +232,68 @@ const FIELDS = [
   { name: "description", label: "Mô tả", type: "textarea", fullWidth: true },
 ];
 
+// Sắp xếp nhanh theo ngày khởi chiếu — không cần gõ, chỉ chọn trong dropdown.
+const SORT_OPTIONS = [
+  { value: "", label: "Sắp xếp: Mặc định" },
+  {
+    value: "release_desc",
+    label: "Ngày khởi chiếu: Mới nhất",
+    sort: (a, b) => String(b.release_date || "").localeCompare(String(a.release_date || "")),
+  },
+  {
+    value: "release_asc",
+    label: "Ngày khởi chiếu: Cũ nhất",
+    sort: (a, b) => String(a.release_date || "").localeCompare(String(b.release_date || "")),
+  },
+  {
+    value: "title_asc",
+    label: "Tên phim: A → Z",
+    sort: (a, b) => String(a.title || "").localeCompare(String(b.title || ""), "vi"),
+  },
+];
+
+// Lọc theo thể loại bằng dropdown (chọn sẵn, không gõ) — vì thể loại là
+// chuỗi tự do (VD: "Hành động, Viễn tưởng") nên tách nhỏ để mỗi thể loại
+// hiện thành 1 lựa chọn riêng trong dropdown.
+const FILTER_OPTIONS = [
+  {
+    key: "genre",
+    label: "thể loại",
+    allLabel: "Tất cả thể loại",
+    getValues: (row) => splitList(row.genre),
+  },
+];
+
 export default function MoviesPage() {
   const { rows, loading, error, reload } = useApiList("movies");
   const showtimes = useApiList("showtimes");
   const rooms = useApiList("rooms");
+
+  // Danh sách thể loại đã có trong hệ thống (suy ra từ dữ liệu phim thật) —
+  // hiện thành các nút bấm-chọn trong form Thêm/Sửa, thay vì bắt gõ tay.
+  // Thêm 1 phim với thể loại mới -> lần mở form sau đó, thể loại đó cũng tự
+  // xuất hiện trong danh sách để chọn (không cần sửa code).
+  const genreOptions = useMemo(() => {
+    const set = new Set();
+    rows.forEach((m) => splitList(m.genre).forEach((g) => set.add(g)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [rows]);
+
+  const FIELDS = useMemo(
+    () => [
+      BASE_FIELDS[0],
+      {
+        name: "genre",
+        label: "Thể loại",
+        type: "tags",
+        fullWidth: true,
+        options: genreOptions,
+        placeholder: "Chưa có trong danh sách? Gõ thể loại mới rồi bấm Thêm...",
+      },
+      ...BASE_FIELDS.slice(1),
+    ],
+    [genreOptions],
+  );
 
   return (
     <CrudSection
@@ -249,6 +306,8 @@ export default function MoviesPage() {
       error={error}
       reload={reload}
       fields={FIELDS}
+      sortOptions={SORT_OPTIONS}
+      filterOptions={FILTER_OPTIONS}
       renderDetail={(row) => (
         <MovieDetail row={row} showtimes={showtimes.rows} rooms={rooms.rows} />
       )}

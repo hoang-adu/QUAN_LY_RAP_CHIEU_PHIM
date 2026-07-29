@@ -117,6 +117,29 @@
   margin: -6px 0 14px;
 }
 
+/* ---------- Thanh lọc/sắp xếp phim (chọn dropdown, không cần gõ) ---------- */
+.cb-movie-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -6px 0 14px;
+}
+.cb-movie-toolbar__select {
+  border: 1px solid #e3e5ea;
+  background: #fafafb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: #16171b;
+  cursor: pointer;
+  min-width: 150px;
+}
+.cb-section__title-select {
+  margin-left: auto;
+  min-width: 150px;
+  font-weight: 500;
+}
+
 /* ---------- Danh sách phim ---------- */
 .cb-movie-grid {
   display: grid;
@@ -369,6 +392,7 @@
 .cb-seat-map {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
   margin-bottom: 18px;
   overflow-x: auto;
@@ -442,11 +466,19 @@
 
 .cb-legend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
   font-size: 11px;
   color: #6b6f7c;
+}
+.cb-legend__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  justify-content: flex-start;
+}
+.cb-legend__row--types {
+  justify-content: center;
 }
 .cb-legend span {
   display: inline-flex;

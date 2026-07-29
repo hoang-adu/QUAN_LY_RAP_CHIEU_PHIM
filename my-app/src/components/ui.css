@@ -205,6 +205,7 @@
 /* ---------- Table toolbar (search box above DataTable) ---------- */
 .ui-table-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
 }
@@ -215,6 +216,90 @@
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 12.5px;
+}
+.ui-table-select {
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  background: #fff;
+  color: inherit;
+  min-width: 160px;
+  cursor: pointer;
+}
+
+/* ---------- Tags field (chọn thể loại dạng chip) ---------- */
+.ui-tags-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ui-tags-field__selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ui-tags-field__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--navy, #15234a);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 6px 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ui-tags-field__chip-remove {
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  line-height: 1;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ui-tags-field__chip-remove:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+.ui-tags-field__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ui-tags-field__option {
+  border: 1px dashed var(--border, #e3e7f1);
+  background: #fff;
+  color: var(--text-dark, #16171b);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.ui-tags-field__option:hover {
+  border-color: var(--navy, #15234a);
+  color: var(--navy, #15234a);
+}
+.ui-tags-field__add-row {
+  display: flex;
+  gap: 8px;
+}
+.ui-tags-field__add-row input {
+  flex: 1;
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+}
+.ui-tags-field__hint {
+  font-size: 12px;
+  color: var(--text-grey, #8a8d99);
 }
 
 /* ---------- Toast ---------- */

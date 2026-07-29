@@ -9,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import { createItem, resolveAssetUrl } from "../api/apiClient";
 import useSeatLocks from "../api/useSeatLocks";
-import { getCustomerId } from "../api/auth";
+import { getAuth, getCustomerId, updateAuthPoints } from "../api/auth";
+import { myVouchers } from "../api/vouchers";
 import { SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { getCurrentPrices } from "../api/ticketPrices";
 import { splitList } from "./MoviesPage";
@@ -85,6 +86,23 @@ export default function CustomerBookingPage() {
   const [foodQuantities, setFoodQuantities] = useState({});
   const [successInfo, setSuccessInfo] = useState(null);
   const [detailMovie, setDetailMovie] = useState(null);
+
+  // Voucher giảm giá (đổi từ điểm tích lũy) mà khách có thể dùng cho đơn
+  // này — chỉ những voucher còn "unused" và chưa hết hạn.
+  const [myUsableVouchers, setMyUsableVouchers] = useState([]);
+  const [selectedVoucherCode, setSelectedVoucherCode] = useState("");
+  useEffect(() => {
+    myVouchers()
+      .then((rows) => {
+        const now = Date.now();
+        setMyUsableVouchers(
+          (rows || []).filter(
+            (v) => v.status === "unused" && (!v.expires_at || new Date(v.expires_at).getTime() > now),
+          ),
+        );
+      })
+      .catch(() => setMyUsableVouchers([]));
+  }, []);
 
   // Giá vé hiện hành lấy TRỰC TIẾP từ API quản lý giá (nguồn sự thật thật
   // sự, có thể đổi bất cứ lúc nào ở trang "Quản lý giá vé") — không dùng
@@ -259,6 +277,10 @@ export default function CustomerBookingPage() {
     .filter(([, quantity]) => Number(quantity) > 0)
     .map(([product_id, quantity]) => ({ product_id: Number(product_id), quantity: Number(quantity) }));
 
+  const selectedVoucher = myUsableVouchers.find((v) => v.code === selectedVoucherCode) || null;
+  const discountAmount = selectedVoucher ? Math.min(Number(selectedVoucher.discount_amount), total) : 0;
+  const payableTotal = total - discountAmount;
+
   async function handleSubmit() {
     if (!customerId) {
       toast.error("Không xác định được tài khoản, vui lòng đăng nhập lại.");
@@ -283,8 +305,18 @@ export default function CustomerBookingPage() {
         food_items: foodItems,
         pay: true,
         payment_method: paymentMethod,
+        voucher_code: selectedVoucher ? selectedVoucher.code : undefined,
       });
       const bookingId = result.booking?.booking_id;
+
+      // Cập nhật lại điểm tích lũy đang lưu trong phiên đăng nhập ngay sau
+      // khi đơn được cộng điểm, để trang "Tài khoản của tôi" hiển thị đúng
+      // số điểm mới mà không cần đăng xuất/đăng nhập lại.
+      const pointsEarned = Number(result.points_earned || 0);
+      if (pointsEarned > 0) {
+        const auth = getAuth();
+        updateAuthPoints(Number(auth?.points ?? 0) + pointsEarned);
+      }
 
       toast.success(`Đặt vé thành công! Đơn #${bookingId} với ${selectedSeats.length} ghế.`);
       // Không chuyển trang ngay — hiện mã vé để khách chụp lại/ghi nhớ,
@@ -293,7 +325,9 @@ export default function CustomerBookingPage() {
         bookingId,
         code: result.tickets?.[0]?.ticket_code || null,
         seatNumbers: selectedSeats.map((id) => seatById[id]?.seat_number).filter(Boolean),
-        total: Number(result.booking?.total_amount ?? total),
+        total: Number(result.booking?.total_amount ?? payableTotal),
+        discountAmount: Number(result.discount_amount || 0),
+        pointsEarned,
       });
     } catch (err) {
       toast.error(
@@ -334,10 +368,22 @@ export default function CustomerBookingPage() {
                 <span>Ghế</span>
                 <strong>{successInfo.seatNumbers.join(", ") || "—"}</strong>
               </div>
+              {successInfo.discountAmount > 0 && (
+                <div className="cb-ticket-stub__row">
+                  <span>Đã giảm voucher</span>
+                  <strong>-{successInfo.discountAmount.toLocaleString("vi-VN")} đ</strong>
+                </div>
+              )}
               <div className="cb-ticket-stub__row">
                 <span>Tổng tiền</span>
                 <strong>{successInfo.total.toLocaleString("vi-VN")} đ</strong>
               </div>
+              {successInfo.pointsEarned > 0 && (
+                <div className="cb-ticket-stub__row">
+                  <span>Điểm tích lũy +</span>
+                  <strong>{successInfo.pointsEarned} điểm</strong>
+                </div>
+              )}
             </div>
 
             <p className="cb-success__note">
@@ -646,9 +692,32 @@ export default function CustomerBookingPage() {
                   <div className="cb-summary__row"><span>Tiền vé</span><strong>{ticketTotal.toLocaleString("vi-VN")} đ</strong></div>
                   <div className="cb-summary__row"><span>Đồ ăn</span><strong>{foodTotal.toLocaleString("vi-VN")} đ</strong></div>
 
+                  {myUsableVouchers.length > 0 && (
+                    <div className="cb-field">
+                      <label>Voucher giảm giá (từ điểm tích lũy)</label>
+                      <select
+                        value={selectedVoucherCode}
+                        onChange={(e) => setSelectedVoucherCode(e.target.value)}
+                      >
+                        <option value="">-- Không dùng voucher --</option>
+                        {myUsableVouchers.map((v) => (
+                          <option key={v.voucher_id} value={v.code}>
+                            {v.code} — giảm {Number(v.discount_amount).toLocaleString("vi-VN")} đ
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {discountAmount > 0 && (
+                    <div className="cb-summary__row">
+                      <span>Giảm giá voucher</span>
+                      <strong>- {discountAmount.toLocaleString("vi-VN")} đ</strong>
+                    </div>
+                  )}
+
                   <div className="cb-summary__total">
                     <span>Tổng tiền</span>
-                    <strong>{total.toLocaleString("vi-VN")} đ</strong>
+                    <strong>{payableTotal.toLocaleString("vi-VN")} đ</strong>
                   </div>
 
                   {showtimeId && (
@@ -667,7 +736,7 @@ export default function CustomerBookingPage() {
                         disabled={submitting || selectedSeats.length === 0}
                         onClick={handleSubmit}
                       >
-                        {submitting ? "Đang xử lý thanh toán..." : `Thanh toán ${total.toLocaleString("vi-VN")} đ`}
+                        {submitting ? "Đang xử lý thanh toán..." : `Thanh toán ${payableTotal.toLocaleString("vi-VN")} đ`}
                       </button>
                     </>
                   )}

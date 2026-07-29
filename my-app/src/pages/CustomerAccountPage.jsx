@@ -5,11 +5,28 @@
 // CGV / Lotte Cinema: thẻ thành viên bên trái, danh sách vé dạng "vé xé".
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getAuth } from "../api/auth";
+import { getAuth, updateAuthPoints } from "../api/auth";
 import useApiList from "../api/useApiList";
 import { resolveAssetUrl } from "../api/apiClient";
+import { redeemVoucher } from "../api/vouchers";
+import { useToast } from "../components/ToastContext";
+import Modal from "../components/Modal";
 import CustomerLayout from "../layout/CustomerLayout";
 import "./customerAccount.css";
+
+const MIN_REDEEM_POINTS = 100;
+const REDEEM_POINTS_STEP = 50;
+const VOUCHER_VALUE_PER_POINT = 500;
+
+function formatVND(n) {
+  return Number(n || 0).toLocaleString("vi-VN") + " đ";
+}
+
+const VOUCHER_STATUS_LABEL = {
+  unused: "Chưa dùng",
+  used: "Đã dùng",
+  expired: "Hết hạn",
+};
 
 function formatDateTime(iso) {
   if (!iso) return null;
@@ -44,8 +61,12 @@ function TicketPoster({ src, alt }) {
 }
 
 export default function CustomerAccountPage() {
-  const auth = getAuth();
-  const [showRedeemNote, setShowRedeemNote] = React.useState(false);
+  const toast = useToast();
+  const [auth, setAuth] = React.useState(() => getAuth());
+  const [showRedeemModal, setShowRedeemModal] = React.useState(false);
+  const [redeemPoints, setRedeemPoints] = React.useState(String(MIN_REDEEM_POINTS));
+  const [redeemError, setRedeemError] = React.useState("");
+  const [redeeming, setRedeeming] = React.useState(false);
 
   // GET /bookings đã tự lọc theo customer đang đăng nhập ở phía backend.
   const bookings = useApiList("bookings");
@@ -56,6 +77,44 @@ export default function CustomerAccountPage() {
   const showtimes = useApiList("showtimes");
   const rooms = useApiList("rooms");
   const seats = useApiList("seats");
+  // Voucher đã đổi từ điểm tích lũy của chính khách hàng ("Ưu đãi của tôi").
+  const vouchers = useApiList("vouchers/mine");
+
+  const redeemPointsNum = Number(redeemPoints) || 0;
+  const redeemPreview = redeemPointsNum * VOUCHER_VALUE_PER_POINT;
+
+  function validateRedeem(points) {
+    if (!Number.isInteger(points) || points <= 0) return "Vui lòng nhập số điểm hợp lệ.";
+    if (points < MIN_REDEEM_POINTS) return `Số điểm đổi tối thiểu là ${MIN_REDEEM_POINTS} điểm.`;
+    if (points % REDEEM_POINTS_STEP !== 0) return `Số điểm đổi phải là bội số của ${REDEEM_POINTS_STEP}.`;
+    if (points > Number(auth?.points ?? 0)) return "Bạn không đủ điểm để đổi voucher này.";
+    return "";
+  }
+
+  async function handleRedeem() {
+    const points = redeemPointsNum;
+    const error = validateRedeem(points);
+    if (error) {
+      setRedeemError(error);
+      return;
+    }
+    setRedeeming(true);
+    setRedeemError("");
+    try {
+      const voucher = await redeemVoucher(points);
+      const newPoints = Number(auth?.points ?? 0) - points;
+      updateAuthPoints(newPoints);
+      setAuth((cur) => ({ ...cur, points: newPoints }));
+      vouchers.reload();
+      setShowRedeemModal(false);
+      setRedeemPoints(String(MIN_REDEEM_POINTS));
+      toast.success(`Đổi điểm thành công! Mã voucher: ${voucher.code} — giảm ${formatVND(voucher.discount_amount)}.`);
+    } catch (err) {
+      setRedeemError(err.message || "Không thể đổi điểm, vui lòng thử lại.");
+    } finally {
+      setRedeeming(false);
+    }
+  }
 
   const myBookingIds = useMemo(
     () => new Set(bookings.rows.map((b) => String(b.booking_id))),
@@ -118,15 +177,13 @@ export default function CustomerAccountPage() {
             <button
               type="button"
               className="ac-membercard__redeem-btn"
-              onClick={() => setShowRedeemNote((v) => !v)}
+              onClick={() => {
+                setRedeemError("");
+                setShowRedeemModal(true);
+              }}
             >
               Đổi điểm lấy voucher
             </button>
-            {showRedeemNote && (
-              <div className="ac-membercard__redeem-note">
-                Tính năng đang được phát triển
-              </div>
-            )}
           </div>
           <div className="ac-membercard__grid">
             <div>
@@ -211,7 +268,85 @@ export default function CustomerAccountPage() {
             </div>
           )}
         </div>
+
+        {/* Voucher đã đổi từ điểm tích lũy */}
+        <div className="ac-vouchers">
+          <div className="ac-vouchers__head">
+            <h3>Ưu đãi của tôi</h3>
+          </div>
+          {vouchers.loading ? (
+            <div className="ac-empty">Đang tải voucher...</div>
+          ) : vouchers.rows.length === 0 ? (
+            <div className="ac-empty">
+              <span className="ac-empty__icon">🎁</span>
+              Bạn chưa đổi voucher nào. Dùng điểm tích lũy để đổi ngay!
+            </div>
+          ) : (
+            <div className="ac-voucher-list">
+              {vouchers.rows.map((v) => (
+                <div className={"ac-voucher " + v.status} key={v.voucher_id}>
+                  <div>
+                    <div className="ac-voucher__code">{v.code}</div>
+                    <div className="ac-voucher__meta">
+                      Đổi từ {v.points_used} điểm
+                      {v.status === "unused" && v.expires_at
+                        ? ` · Hạn dùng ${formatDate(v.expires_at)}`
+                        : v.status === "used" && v.used_at
+                          ? ` · Đã dùng cho đơn #${v.booking_id ?? "—"}`
+                          : ""}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="ac-voucher__discount">-{formatVND(v.discount_amount)}</span>
+                    <span className="ac-voucher__tag">{VOUCHER_STATUS_LABEL[v.status] || v.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      <Modal
+        open={showRedeemModal}
+        onClose={() => setShowRedeemModal(false)}
+        title="Đổi điểm tích lũy lấy voucher"
+        width={420}
+      >
+        <div className="ac-redeem-form">
+          <div className="ac-redeem-form__hint">
+            Bạn đang có <strong>{auth?.points ?? 0}</strong> điểm. Đổi tối thiểu{" "}
+            {MIN_REDEEM_POINTS} điểm, mỗi lần đổi phải là bội số của {REDEEM_POINTS_STEP} điểm.
+            Cứ 1 điểm đổi được {formatVND(VOUCHER_VALUE_PER_POINT)} giảm giá.
+          </div>
+          <div className="ac-redeem-form__row">
+            <input
+              type="number"
+              min={MIN_REDEEM_POINTS}
+              step={REDEEM_POINTS_STEP}
+              value={redeemPoints}
+              onChange={(e) => {
+                setRedeemPoints(e.target.value);
+                setRedeemError("");
+              }}
+            />
+            <span>điểm</span>
+          </div>
+          <div className="ac-redeem-form__preview">
+            Voucher nhận được: <strong>{formatVND(redeemPreview)}</strong> giảm giá, hạn dùng 90
+            ngày.
+          </div>
+          {redeemError && <div className="ac-redeem-form__error">{redeemError}</div>}
+          <button
+            type="button"
+            className="ac-redeem-form__submit"
+            disabled={redeeming}
+            onClick={handleRedeem}
+          >
+            {redeeming ? "Đang xử lý..." : "Xác nhận đổi voucher"}
+          </button>
+        </div>
+      </Modal>
     </CustomerLayout>
   );
 }

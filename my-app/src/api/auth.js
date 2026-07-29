@@ -60,6 +60,16 @@ export function getCustomerId() {
   return getAuth()?.customer_id || null;
 }
 
+// Cập nhật lại điểm tích lũy đang lưu trong phiên đăng nhập (localStorage)
+// sau khi khách tự đổi điểm lấy voucher hoặc vừa được cộng điểm từ 1 đơn
+// mới thanh toán — để hiển thị đúng ngay, không cần khách đăng xuất/đăng
+// nhập lại mới thấy số điểm mới.
+export function updateAuthPoints(points) {
+  const auth = getAuth();
+  if (!auth) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...auth, points }));
+}
+
 // Tài khoản "Bảo vệ" không cần thao tác bán vé/thanh toán/đồ ăn.
 // Đây là hạn chế ở phía giao diện (UX); quyền thực sự vẫn phải do backend kiểm soát.
 export function isSecurityGuard() {

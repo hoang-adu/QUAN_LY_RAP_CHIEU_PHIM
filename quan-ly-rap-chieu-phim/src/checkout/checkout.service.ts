@@ -10,13 +10,11 @@ import { Product } from '../products/product.entity';
 import { FoodOrder } from '../food-orders/food-order.entity';
 import { FoodOrderDetail } from '../food-orders/food-order-detail.entity';
 import { Customer } from '../customers/customer.entity';
+import { Voucher } from '../vouchers/voucher.entity';
 import { TicketPricesService } from '../ticket-prices/ticket-prices.service';
 import { CheckoutBookingDto } from './dto/checkout-booking.dto';
 import { Holder, SeatLocksService } from '../seat-locks/seat-locks.service';
-
-// Điểm tích lũy chỉ cộng khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
-// mình — nhân viên/admin đặt hộ tại quầy thì không được cộng.
-const BOOKING_LOYALTY_POINTS = 5;
+import { EARN_POINTS_PERCENT, POINT_VALUE_VND } from '../vouchers/vouchers.constants';
 
 export interface CheckoutActor {
   role?: string;
@@ -32,6 +30,9 @@ export interface CheckoutResult {
   food_details: FoodOrderDetail[];
   ticket_total: number;
   food_total: number;
+  discount_amount: number;
+  voucher: Voucher | null;
+  points_earned: number;
 }
 
 @Injectable()
@@ -104,6 +105,7 @@ export class CheckoutService {
       const foodOrderRepo = manager.getRepository(FoodOrder);
       const detailRepo = manager.getRepository(FoodOrderDetail);
       const customerRepo = manager.getRepository(Customer);
+      const voucherRepo = manager.getRepository(Voucher);
 
       const customer = await customerRepo.findOne({ where: { customer_id: Number(customerId) } });
       if (!customer) throw new NotFoundException(`Không tìm thấy khách hàng #${customerId}`);
@@ -136,8 +138,37 @@ export class CheckoutService {
       );
       const grandTotal = ticketTotal + foodTotal;
 
+      // Áp dụng voucher giảm giá (nếu có). Chỉ cho phép khi thu tiền ngay
+      // (dto.pay !== false), vì voucher chỉ được đánh dấu "đã dùng" tại
+      // đúng thời điểm thanh toán thành công — tránh vừa giảm giá vừa để
+      // đơn ở trạng thái "pending" chưa trả tiền.
+      let voucher: Voucher | null = null;
+      let discountAmount = 0;
+      if (dto.voucher_code) {
+        if (dto.pay === false) {
+          throw new BadRequestException('Chỉ áp dụng voucher khi thanh toán ngay.');
+        }
+        voucher = await voucherRepo.createQueryBuilder('v')
+          .setLock('pessimistic_write')
+          .where('v.code = :code', { code: dto.voucher_code })
+          .getOne();
+        if (!voucher) throw new NotFoundException('Không tìm thấy voucher.');
+        if (Number(voucher.customer_id) !== Number(customerId)) {
+          throw new ForbiddenException('Voucher không thuộc về khách hàng này.');
+        }
+        if (voucher.expires_at && voucher.expires_at.getTime() < Date.now() && voucher.status === 'unused') {
+          voucher.status = 'expired';
+          await voucherRepo.save(voucher);
+        }
+        if (voucher.status !== 'unused') {
+          throw new BadRequestException('Voucher đã được sử dụng hoặc không còn hiệu lực.');
+        }
+        discountAmount = Math.min(Number(voucher.discount_amount), grandTotal);
+      }
+      const payableTotal = grandTotal - discountAmount;
+
       let booking = await bookingRepo.save(bookingRepo.create({
-        customer_id: Number(customerId), total_amount: grandTotal, status: 'pending',
+        customer_id: Number(customerId), total_amount: payableTotal, status: 'pending',
       }));
       const ticketCode = await this.generateTicketCode(manager);
       const tickets = await ticketRepo.save(seats.map((seat) => ticketRepo.create({
@@ -172,26 +203,43 @@ export class CheckoutService {
       }
 
       let payment: Payment | null = null;
+      let pointsEarned = 0;
       if (dto.pay !== false) {
         payment = await paymentRepo.save(paymentRepo.create({
           booking_id: booking.booking_id,
-          amount: grandTotal,
+          amount: payableTotal,
           payment_method: dto.payment_method || (isStaff ? 'cash' : 'momo'),
           payment_status: 'paid',
           channel: isStaff ? 'counter' : 'online',
         }));
         booking.status = 'confirmed';
         booking = await bookingRepo.save(booking);
-        // Chỉ cộng điểm khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
-        // mình. Nhân viên/admin tạo vé hộ tại quầy thì KHÔNG cộng điểm,
-        // kể cả khi khách đó đã có tài khoản khách hàng.
-        if (!isStaff) {
-          customer.points = Number(customer.points ?? 0) + BOOKING_LOYALTY_POINTS;
+
+        if (voucher) {
+          voucher.status = 'used';
+          voucher.used_at = new Date();
+          voucher.booking_id = booking.booking_id;
+          await voucherRepo.save(voucher);
+        }
+
+        // Cộng điểm cho MỌI đơn đã thanh toán, bất kể khách tự đặt online
+        // hay nhân viên/admin bán hộ tại quầy — khách vãng lai đã có hồ sơ
+        // (customer_id) và mua nhiều lần vẫn phải được tích điểm như khách
+        // tự đặt, nếu không sẽ không bao giờ tích lũy được gì dù mua rất
+        // nhiều lần tại quầy. Điểm tích lũy tính theo PHẦN TRĂM giá trị đơn
+        // THỰC TRẢ (đã trừ voucher, nếu có) — xem vouchers.constants.ts.
+        pointsEarned = Math.floor((payableTotal * EARN_POINTS_PERCENT) / 100 / POINT_VALUE_VND);
+        if (pointsEarned > 0) {
+          customer.points = Number(customer.points ?? 0) + pointsEarned;
           await customerRepo.save(customer);
         }
       }
 
-      return { booking, tickets, payment, food_order: foodOrder, food_details: foodDetails, ticket_total: ticketTotal, food_total: foodTotal };
+      return {
+        booking, tickets, payment, food_order: foodOrder, food_details: foodDetails,
+        ticket_total: ticketTotal, food_total: foodTotal,
+        discount_amount: discountAmount, voucher, points_earned: pointsEarned,
+      };
     });
 
     await Promise.all(seats.map((s) => this.seatLocksService.releaseAfterPurchase(dto.showtime_id, s.seat_id)));

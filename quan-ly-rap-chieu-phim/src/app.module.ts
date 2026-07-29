@@ -18,6 +18,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { SeatLocksModule } from './seat-locks/seat-locks.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { TicketPricesModule } from './ticket-prices/ticket-prices.module';
+import { VouchersModule } from './vouchers/vouchers.module';
 
 // Thành viên 3
 import { PaymentsModule } from './payments/payments.module';
@@ -67,6 +68,7 @@ import { UploadsModule } from './uploads/uploads.module';
     SeatLocksModule,
     CheckoutModule,
     TicketPricesModule,
+    VouchersModule,
 
     // Thành viên 3
     PaymentsModule,

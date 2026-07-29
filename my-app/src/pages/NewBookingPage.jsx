@@ -6,8 +6,19 @@ import useSeatLocks from "../api/useSeatLocks";
 import { SEAT_TYPE_LABELS } from "../utils/seatPricing";
 import { getCurrentPrices } from "../api/ticketPrices";
 import { useToast } from "../components/ToastContext";
+import { redeemVoucher, vouchersOfCustomer } from "../api/vouchers";
+import Modal from "../components/Modal";
 import "./table.css";
 import "../components/ui.css";
+// Tái dùng đúng CSS của sơ đồ ghế bên khách hàng (cb-screen, cb-seat-map,
+// cb-seat-row...) để sơ đồ ghế bên quản lý/nhân viên nhìn giống hệt bên
+// khách hàng, thay vì lưới nút seat-btn cũ (không có "MÀN HÌNH", không gom
+// theo hàng ghế).
+import "./customerBooking.css";
+
+const MIN_REDEEM_POINTS = 100;
+const REDEEM_POINTS_STEP = 50;
+const VOUCHER_VALUE_PER_POINT = 500;
 
 // Khách mua trực tiếp tại quầy không phải lúc nào cũng có tài khoản (không
 // cần password/email) — vẫn cần 1 dòng "customers" để gắn booking, nên cho
@@ -55,6 +66,15 @@ export default function NewBookingPage() {
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
 
+  // Voucher (đổi từ điểm tích lũy) của khách hàng đang chọn — nhân viên có
+  // thể áp dụng ngay vào đơn đang tạo tại quầy.
+  const [customerVouchers, setCustomerVouchers] = useState([]);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [redeemPoints, setRedeemPoints] = useState(String(MIN_REDEEM_POINTS));
+  const [redeemError, setRedeemError] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+
   // Ghế đang được NGƯỜI KHÁC giữ tạm (seat-lock) cho suất chiếu đang chọn —
   // poll realtime để tránh chọn trùng ghế người khác đang thao tác dở.
   const { lockedByOthers, hold, release } = useSeatLocks(showtimeId || null);
@@ -81,6 +101,27 @@ export default function NewBookingPage() {
       .sort((a, b) => String(a.seat_number).localeCompare(String(b.seat_number)));
   }, [seats.rows, currentShowtime]);
 
+  // Gom ghế theo hàng (chữ cái đầu của seat_number) để vẽ sơ đồ giống hệt
+  // sơ đồ bên khách hàng (xem CustomerBookingPage.jsx#seatRows).
+  const seatRows = useMemo(() => {
+    const map = new Map();
+    for (const s of roomSeats) {
+      const row = String(s.seat_number || "").charAt(0) || "?";
+      if (!map.has(row)) map.set(row, []);
+      map.get(row).push(s);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([row, list]) => ({
+        row,
+        list: list.sort(
+          (a, b) =>
+            parseInt(String(a.seat_number).slice(1), 10) -
+            parseInt(String(b.seat_number).slice(1), 10),
+        ),
+      }));
+  }, [roomSeats]);
+
   const takenSeatIds = useMemo(() => {
     if (!showtimeId) return new Set();
     return new Set(
@@ -106,6 +147,64 @@ export default function NewBookingPage() {
   const selectedCustomer = customers.rows.find(
     (c) => String(c.customer_id) === String(customerId),
   );
+
+  function loadCustomerVouchers(id) {
+    if (!id) {
+      setCustomerVouchers([]);
+      return;
+    }
+    vouchersOfCustomer(id)
+      .then((rows) => {
+        const now = Date.now();
+        setCustomerVouchers(
+          (rows || []).filter(
+            (v) => v.status === "unused" && (!v.expires_at || new Date(v.expires_at).getTime() > now),
+          ),
+        );
+      })
+      .catch(() => setCustomerVouchers([]));
+  }
+
+  useEffect(() => {
+    setVoucherCode("");
+    loadCustomerVouchers(customerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId]);
+
+  const redeemPointsNum = Number(redeemPoints) || 0;
+  const redeemPreview = redeemPointsNum * VOUCHER_VALUE_PER_POINT;
+
+  function validateRedeem(points) {
+    if (!Number.isInteger(points) || points <= 0) return "Vui lòng nhập số điểm hợp lệ.";
+    if (points < MIN_REDEEM_POINTS) return `Số điểm đổi tối thiểu là ${MIN_REDEEM_POINTS} điểm.`;
+    if (points % REDEEM_POINTS_STEP !== 0) return `Số điểm đổi phải là bội số của ${REDEEM_POINTS_STEP}.`;
+    if (points > Number(selectedCustomer?.points ?? 0)) return "Khách không đủ điểm để đổi voucher này.";
+    return "";
+  }
+
+  async function handleRedeemForCustomer() {
+    const points = redeemPointsNum;
+    const error = validateRedeem(points);
+    if (error) {
+      setRedeemError(error);
+      return;
+    }
+    setRedeeming(true);
+    setRedeemError("");
+    try {
+      const voucher = await redeemVoucher(points, customerId);
+      customers.reload();
+      loadCustomerVouchers(customerId);
+      setVoucherCode(voucher.code);
+      setShowRedeemModal(false);
+      setRedeemPoints(String(MIN_REDEEM_POINTS));
+      toast.success(`Đã đổi ${points} điểm lấy voucher ${voucher.code} và áp dụng cho đơn này.`);
+    } catch (err) {
+      setRedeemError(err.message || "Không thể đổi điểm, vui lòng thử lại.");
+    } finally {
+      setRedeeming(false);
+    }
+  }
 
   async function toggleSeat(seat) {
     const id = String(seat.seat_id);
@@ -157,6 +256,7 @@ export default function NewBookingPage() {
   function resetForm() {
     setSelectedSeats([]);
     setFoodQuantities({});
+    setVoucherCode("");
     // Không cần gọi release() thủ công ở đây: vé tạo thành công thì backend
     // đã tự xoá seat-lock tương ứng (xem TicketsService.create).
   }
@@ -173,6 +273,14 @@ export default function NewBookingPage() {
   const foodItems = Object.entries(foodQuantities)
     .filter(([, quantity]) => Number(quantity) > 0)
     .map(([product_id, quantity]) => ({ product_id: Number(product_id), quantity: Number(quantity) }));
+
+  // Voucher chỉ áp dụng được khi thu tiền ngay (đúng theo backend) — nếu
+  // nhân viên bỏ tick "thanh toán ngay" thì bỏ qua voucher đã chọn.
+  const selectedVoucher = createPayment
+    ? customerVouchers.find((v) => v.code === voucherCode) || null
+    : null;
+  const discountAmount = selectedVoucher ? Math.min(Number(selectedVoucher.discount_amount), total) : 0;
+  const payableTotal = total - discountAmount;
 
   async function handleSubmit() {
     if (!showtimeId) return toast.error("Vui lòng chọn suất chiếu.");
@@ -194,10 +302,16 @@ export default function NewBookingPage() {
         food_items: foodItems,
         pay: createPayment,
         payment_method: paymentMethod,
+        voucher_code: selectedVoucher ? selectedVoucher.code : undefined,
       });
       const bookingId = result.booking?.booking_id;
+      const pointsEarned = Number(result.points_earned || 0);
 
-      toast.success(`Đã tạo đơn đặt vé #${bookingId} với ${selectedSeats.length} ghế.`);
+      toast.success(
+        `Đã tạo đơn đặt vé #${bookingId} với ${selectedSeats.length} ghế.` +
+          (pointsEarned > 0 ? ` Khách được cộng ${pointsEarned} điểm tích lũy.` : ""),
+      );
+      customers.reload();
       resetForm();
       navigate("/bookings");
     } catch (err) {
@@ -273,56 +387,78 @@ export default function NewBookingPage() {
           {showtimeId && (
             <>
               <div className="section-title">Sơ đồ ghế</div>
-              <div className="seat-legend">
-                <span><span className="dot avail" /> Còn trống</span>
-                <span><span className="dot held" /> Đang được giữ</span>
-                <span><span className="dot taken" /> Đã bán</span>
-                <span><span className="dot selected" /> Đang chọn</span>
-              </div>
-              <div className="seat-legend">
-                <span>{SEAT_TYPE_LABELS.standard} — {priceForSeatType("standard").toLocaleString("vi-VN")} đ (hàng A-C)</span>
-                <span>{SEAT_TYPE_LABELS.vip} — {priceForSeatType("vip").toLocaleString("vi-VN")} đ (hàng D-G)</span>
-                <span>{SEAT_TYPE_LABELS.couple} — {priceForSeatType("couple").toLocaleString("vi-VN")} đ (hàng H)</span>
-              </div>
-              <div className="page-sub" style={{ marginBottom: 10 }}>
+              <p className="cb-hint">
                 Ghế đã chọn sẽ được giữ trong 5 phút — quá thời gian mà chưa tạo đơn, ghế sẽ tự trống lại cho khách khác.
-              </div>
+              </p>
 
               {roomSeats.length === 0 ? (
                 <div className="et-status">Phòng chiếu này chưa được khai báo ghế.</div>
               ) : (
-                <div className="seat-map">
-                  {roomSeats.map((seat) => {
-                    const seatId = String(seat.seat_id);
-                    const taken = takenSeatIds.has(seatId);
-                    const held = lockedByOthers.has(seatId);
-                    const selected = selectedSeats.includes(seatId);
-                    return (
-                      <button
-                        type="button"
-                        key={seat.seat_id}
-                        className={
-                          "seat-btn" +
-                          (taken ? " taken" : "") +
-                          (!taken && held ? " held" : "") +
-                          (selected ? " selected" : "") +
-                          (seat.seat_type === "vip" ? " vip" : "") +
-                          (seat.seat_type === "couple" ? " couple" : "")
-                        }
-                        disabled={taken || (held && !selected)}
-                        onClick={() => toggleSeat(seat)}
-                        title={
-                          taken
-                            ? "Ghế đã bán"
-                            : held
-                              ? "Ghế đang được người khác giữ, thử lại sau ít phút"
-                              : `${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`
-                        }
-                      >
-                        {seat.seat_number}
-                      </button>
-                    );
-                  })}
+                <div className="cb-screen-area">
+                  <div className="cb-screen">
+                    <div className="cb-screen__curve" />
+                    <span>MÀN HÌNH</span>
+                  </div>
+
+                  <div className="cb-seat-map">
+                    {seatRows.map(({ row, list }) => (
+                      <div className="cb-seat-row" key={row}>
+                        <span className="cb-seat-row__label">{row}</span>
+                        <div className="cb-seat-row__seats">
+                          {list.map((seat) => {
+                            const seatId = String(seat.seat_id);
+                            const taken = takenSeatIds.has(seatId);
+                            const held = lockedByOthers.has(seatId);
+                            const selected = selectedSeats.includes(seatId);
+                            return (
+                              <button
+                                type="button"
+                                key={seat.seat_id}
+                                className={
+                                  "cb-seat" +
+                                  (taken ? " taken" : "") +
+                                  (!taken && held ? " held" : "") +
+                                  (selected ? " selected" : "") +
+                                  (seat.seat_type === "vip" ? " vip" : "") +
+                                  (seat.seat_type === "couple" ? " couple" : "")
+                                }
+                                disabled={taken || (held && !selected)}
+                                onClick={() => toggleSeat(seat)}
+                                title={
+                                  taken
+                                    ? "Ghế đã bán"
+                                    : held
+                                      ? "Ghế đang được người khác giữ, thử lại sau ít phút"
+                                      : `${SEAT_TYPE_LABELS[seat.seat_type] || seat.seat_type} — ${priceForSeatType(seat.seat_type).toLocaleString("vi-VN")} đ`
+                                }
+                              >
+                                {String(seat.seat_number).slice(1)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="cb-legend">
+                    <div className="cb-legend__row">
+                      <span><i className="cb-dot avail" /> Còn trống</span>
+                      <span><i className="cb-dot selected" /> Đang chọn</span>
+                      <span><i className="cb-dot held" /> Đang giữ</span>
+                      <span><i className="cb-dot taken" /> Đã bán</span>
+                    </div>
+                    <div className="cb-legend__row cb-legend__row--types">
+                      {["standard", "vip", "couple"]
+                        .map((t) => ({ type: t, price: priceForSeatType(t) }))
+                        .sort((a, b) => a.price - b.price)
+                        .map(({ type, price }) => (
+                          <span key={type}>
+                            <i className={`cb-dot ${type}`} /> {SEAT_TYPE_LABELS[type]} · {price.toLocaleString("vi-VN")}đ
+                          </span>
+                        ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -399,6 +535,49 @@ export default function NewBookingPage() {
                 )}
               </div>
 
+              {selectedCustomer && (
+                <div className="et-table-wrap" style={{ padding: 14, marginBottom: 18 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: customerVouchers.length || createPayment ? 10 : 0 }}>
+                    <span style={{ fontSize: 13 }}>
+                      ⭐ Điểm tích lũy của <b>{selectedCustomer.full_name}</b>: <b>{selectedCustomer.points ?? 0}</b>
+                    </span>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn-ghost ui-btn-sm"
+                      onClick={() => {
+                        setRedeemError("");
+                        setShowRedeemModal(true);
+                      }}
+                    >
+                      Đổi điểm lấy voucher
+                    </button>
+                  </div>
+
+                  {!createPayment && (
+                    <div className="page-sub" style={{ marginBottom: 0 }}>
+                      Chỉ áp dụng được voucher khi tick "Xác nhận thanh toán ngay" bên dưới.
+                    </div>
+                  )}
+
+                  {createPayment && (
+                    <div className="ui-field" style={{ maxWidth: 420, marginBottom: 0 }}>
+                      <label>Dùng voucher giảm giá cho đơn này</label>
+                      <select value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)}>
+                        <option value="">-- Không dùng voucher --</option>
+                        {customerVouchers.map((v) => (
+                          <option key={v.voucher_id} value={v.code}>
+                            {v.code} — giảm {Number(v.discount_amount).toLocaleString("vi-VN")} đ
+                          </option>
+                        ))}
+                      </select>
+                      {customerVouchers.length === 0 && (
+                        <small>Khách chưa có voucher nào có thể dùng.</small>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="section-title">Đồ ăn và thức uống mua kèm</div>
               <div className="ui-form-grid" style={{ marginBottom: 18 }}>
                 {products.rows.map((product) => (
@@ -449,10 +628,21 @@ export default function NewBookingPage() {
               )}
 
               <div className="et-table-wrap" style={{ padding: 16, marginBottom: 18 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, flexWrap: "wrap", gap: 6 }}>
                   <span>Số ghế đã chọn: <b>{selectedSeats.length}</b></span>
                   <span>Khách hàng: <b>{selectedCustomer?.full_name || "Chưa chọn"}</b></span>
-                  <span>Tiền vé: <b>{ticketTotal.toLocaleString("vi-VN")} đ</b> · Đồ ăn: <b>{foodTotal.toLocaleString("vi-VN")} đ</b> · Tổng: <b>{total.toLocaleString("vi-VN")} đ</b></span>
+                  <span>
+                    Tiền vé: <b>{ticketTotal.toLocaleString("vi-VN")} đ</b> · Đồ ăn:{" "}
+                    <b>{foodTotal.toLocaleString("vi-VN")} đ</b>
+                    {discountAmount > 0 && (
+                      <>
+                        {" "}
+                        · Giảm voucher: <b>-{discountAmount.toLocaleString("vi-VN")} đ</b>
+                      </>
+                    )}
+                    {" "}
+                    · Khách trả: <b>{payableTotal.toLocaleString("vi-VN")} đ</b>
+                  </span>
                 </div>
               </div>
 
@@ -461,12 +651,59 @@ export default function NewBookingPage() {
                 disabled={submitting}
                 onClick={handleSubmit}
               >
-                {submitting ? "Đang tạo đơn..." : "Tạo đơn đặt vé"}
+                {submitting ? "Đang tạo đơn..." : `Tạo đơn đặt vé · ${payableTotal.toLocaleString("vi-VN")} đ`}
               </button>
             </>
           )}
         </>
       )}
+
+      <Modal
+        open={showRedeemModal}
+        onClose={() => setShowRedeemModal(false)}
+        title={`Đổi điểm lấy voucher cho ${selectedCustomer?.full_name || "khách hàng"}`}
+        width={420}
+      >
+        <div className="ui-field" style={{ marginBottom: 10 }}>
+          <div className="page-sub" style={{ marginBottom: 10 }}>
+            Khách đang có <b>{selectedCustomer?.points ?? 0}</b> điểm. Đổi tối thiểu{" "}
+            {MIN_REDEEM_POINTS} điểm, mỗi lần đổi phải là bội số của {REDEEM_POINTS_STEP} điểm. Cứ
+            1 điểm đổi được {VOUCHER_VALUE_PER_POINT.toLocaleString("vi-VN")} đ giảm giá.
+          </div>
+          <label>Số điểm muốn đổi</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="number"
+              min={MIN_REDEEM_POINTS}
+              step={REDEEM_POINTS_STEP}
+              value={redeemPoints}
+              onChange={(e) => {
+                setRedeemPoints(e.target.value);
+                setRedeemError("");
+              }}
+              style={{ flex: 1 }}
+            />
+            <span>điểm</span>
+          </div>
+        </div>
+        <div className="page-sub" style={{ marginBottom: 10 }}>
+          Voucher nhận được: <b>{redeemPreview.toLocaleString("vi-VN")} đ</b> giảm giá, hạn dùng 90
+          ngày. Voucher sẽ được tự động chọn để áp dụng cho đơn đang tạo.
+        </div>
+        {redeemError && (
+          <div className="page-sub" style={{ color: "#d0463b", marginBottom: 10 }}>
+            {redeemError}
+          </div>
+        )}
+        <button
+          type="button"
+          className="ui-btn ui-btn-primary"
+          disabled={redeeming}
+          onClick={handleRedeemForCustomer}
+        >
+          {redeeming ? "Đang xử lý..." : "Xác nhận đổi voucher"}
+        </button>
+      </Modal>
     </>
   );
 }

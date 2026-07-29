@@ -160,10 +160,17 @@ export default function TicketCheckInPage() {
   const booking = tickets?.length ? bookingById[String(tickets[0].booking_id)] : null;
   const customer = booking ? customerById[String(booking.customer_id)] : null;
   const allPickedUp = !!tickets?.length && tickets.every((t) => t.is_picked_up);
-  const totalAmount = (tickets || []).reduce(
+  // Không cộng dồn ticket_price thôi vì đơn có thể kèm đồ ăn/nước uống
+  // (food_orders). booking.total_amount là số tiền THỰC TRẢ backend đã
+  // tính sẵn = tổng tiền vé + tổng tiền đồ ăn - giảm giá voucher (xem
+  // checkout.service.ts), nên dùng đúng số đó để khớp với thực tế khách
+  // đã trả, thay vì chỉ cộng lại giá vé.
+  const ticketOnlyTotal = (tickets || []).reduce(
     (sum, t) => sum + Number(t.ticket_price || 0),
     0,
   );
+  const totalAmount = booking?.total_amount != null ? Number(booking.total_amount) : ticketOnlyTotal;
+  const hasExtraCharges = booking?.total_amount != null && Number(booking.total_amount) > ticketOnlyTotal;
 
   // Đơn chỉ được coi là "đã thanh toán" khi có ít nhất 1 bản ghi payments
   // với payment_status = 'paid' cho đúng booking_id này — khớp với điều
@@ -205,6 +212,12 @@ export default function TicketCheckInPage() {
     try {
       const result = await checkInByCode(ticketCode);
       setTickets(result);
+      // Bảng "Đơn đã thanh toán, chờ nhận vé" ở trên được tính từ
+      // allTickets.rows (đã fetch từ trước khi vào trang), nên nếu không
+      // nạp lại thì nó vẫn hiển thị is_picked_up cũ -> phải load trang khác
+      // rồi quay lại mới thấy đổi. Nạp lại ngay sau khi xác nhận để cột
+      // "Trạng thái nhận vé" ở bảng trên cập nhật tức thì.
+      allTickets.reload();
       toast.success(`Đã xác nhận đưa vé cho mã "${ticketCode}" (${result.length} ghế).`);
     } catch (err) {
       toast.error(err.message || "Xác nhận thất bại.");
@@ -332,7 +345,14 @@ export default function TicketCheckInPage() {
               <div><b>Khách hàng:</b> {customer?.full_name || "—"} · {customer?.phone || "—"}</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div><b>Tổng tiền:</b> {totalAmount.toLocaleString("vi-VN")} đ</div>
+              <div>
+                <b>Tổng tiền:</b> {totalAmount.toLocaleString("vi-VN")} đ
+                {hasExtraCharges ? (
+                  <span className="page-sub" style={{ margin: "2px 0 0" }}>
+                    (đã gồm vé {ticketOnlyTotal.toLocaleString("vi-VN")} đ + đồ ăn/nước uống)
+                  </span>
+                ) : null}
+              </div>
               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 4 }}>
                 {isPaid ? (
                   <span className="et-badge ok">Đã thanh toán</span>

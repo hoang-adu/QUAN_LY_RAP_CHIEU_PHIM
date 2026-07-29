@@ -91,4 +91,14 @@ export class CheckoutBookingDto {
   @IsOptional()
   @IsString()
   payment_method?: string;
+
+  /**
+   * Mã voucher giảm giá muốn áp dụng (đổi từ điểm tích lũy qua
+   * POST /vouchers/redeem). Chỉ áp dụng được khi thu tiền ngay
+   * (pay !== false) và voucher phải thuộc về khách hàng đang đặt vé.
+   * @example "GG-7K2QX9"
+   */
+  @IsOptional()
+  @IsString()
+  voucher_code?: string;
 }

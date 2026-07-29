@@ -129,6 +129,22 @@ CREATE TABLE food_order_details (
     FOREIGN KEY (product_id) REFERENCES products(product_id)  ON DELETE RESTRICT
 );
 
+-- 13. Bảng voucher giảm giá đổi từ điểm tích lũy (vouchers)
+CREATE TABLE vouchers (
+    voucher_id      INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id     INT           NOT NULL,
+    code            VARCHAR(30)   NOT NULL UNIQUE,
+    points_used     INT           NOT NULL,
+    discount_amount DECIMAL(10,2) NOT NULL,
+    status          ENUM('unused', 'used', 'expired') NOT NULL DEFAULT 'unused',
+    created_at      DATETIME      DEFAULT CURRENT_TIMESTAMP,
+    expires_at      DATETIME,
+    used_at         DATETIME,
+    booking_id      INT,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE RESTRICT,
+    FOREIGN KEY (booking_id)  REFERENCES bookings(booking_id)   ON DELETE SET NULL
+);
+
 -- ==================== DỮ LIỆU MẪU ====================
 
 -- Movies (23 phim, movie_id 1..23)

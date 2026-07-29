@@ -9,6 +9,7 @@ import { Product } from '../products/product.entity';
 import { FoodOrder } from '../food-orders/food-order.entity';
 import { FoodOrderDetail } from '../food-orders/food-order-detail.entity';
 import { Customer } from '../customers/customer.entity';
+import { Voucher } from '../vouchers/voucher.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -22,7 +23,7 @@ import { CheckoutController } from './checkout.controller';
   imports: [
     TypeOrmModule.forFeature([
       Ticket, Seat, Showtime, Booking, Payment, Product,
-      FoodOrder, FoodOrderDetail, Customer,
+      FoodOrder, FoodOrderDetail, Customer, Voucher,
     ]),
     BookingsModule,
     TicketsModule,

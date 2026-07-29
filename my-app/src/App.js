@@ -9,6 +9,7 @@ import { ToastProvider } from "./components/ToastContext";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import CustomerAccountPage from "./pages/CustomerAccountPage";
 import CustomerBookingPage from "./pages/CustomerBookingPage";
 import HomePage from "./pages/HomePage";
@@ -33,6 +34,7 @@ function App() {
           {/* Trang đăng nhập/đăng ký — không bọc Sidebar/Topbar */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Trang tài khoản + đặt vé online của khách hàng — cũng không dùng dashboard Admin */}
           <Route

@@ -1,4 +1,3 @@
-
 import React from "react";
 import useApiList from "../api/useApiList";
 import DataTable from "./DataTable";
@@ -12,6 +11,13 @@ const FIELDS = [
   { name: "price", label: "Giá bán (đ)", type: "number", required: true },
   { name: "stock_quantity", label: "Tồn kho", type: "number" },
 ];
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN");
+}
 
 function stockBadge(qty) {
   const q = Number(qty ?? 0);
@@ -70,7 +76,7 @@ export default function ProductsPage() {
             label: "Khách hàng",
             render: (v) => customerNameById[String(v)] || (v ? `#${v}` : "—"),
           },
-          { key: "order_date", label: "Ngày đặt" },
+          { key: "order_date", label: "Ngày đặt", render: formatDateTime },
           {
             key: "total_amount",
             label: "Tổng tiền",

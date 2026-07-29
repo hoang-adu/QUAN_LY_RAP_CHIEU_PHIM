@@ -8,6 +8,13 @@ import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
 
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN");
+}
+
 function statusBadge(status) {
   const s = (status || "").toLowerCase();
   const cls = s === "confirmed" ? "ok" : s === "cancelled" ? "cancel" : "pending";
@@ -244,7 +251,7 @@ export default function BookingsPage() {
             label: "Khách hàng",
             render: (v) => customerNameById[String(v)] || (v ? `#${v}` : "—"),
           },
-          { key: "booking_date", label: "Ngày đặt" },
+          { key: "booking_date", label: "Ngày đặt", render: formatDateTime },
           {
             key: "ticket_count",
             label: "Số vé",
@@ -392,7 +399,7 @@ export default function BookingsPage() {
                 </div>
                 <div>
                   <span>Ngày đặt</span>
-                  <b>{billBooking.booking_date}</b>
+                  <b>{formatDateTime(billBooking.booking_date)}</b>
                 </div>
                 <div>
                   <span>Khách hàng</span>

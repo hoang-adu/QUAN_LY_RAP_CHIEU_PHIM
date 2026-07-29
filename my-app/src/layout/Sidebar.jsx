@@ -18,6 +18,7 @@ const MENU_GROUPS = [
       { to: "/movies", label: "Quản lý phim", icon: "🎞️" },
       { to: "/rooms", label: "Phòng chiếu & Ghế", icon: "🏛️" },
       { to: "/showtimes", label: "Suất chiếu", icon: "🕒" },
+      { to: "/pricing", label: "Quản lý giá vé", icon: "💰", adminOnly: true },
     ],
   },
   {

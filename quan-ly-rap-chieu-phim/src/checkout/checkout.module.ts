@@ -6,6 +6,7 @@ import { Showtime } from '../showtimes/showtime.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { TicketPricesModule } from '../ticket-prices/ticket-prices.module';
 import { CheckoutService } from './checkout.service';
 import { CheckoutController } from './checkout.controller';
 
@@ -19,6 +20,7 @@ import { CheckoutController } from './checkout.controller';
     BookingsModule,
     TicketsModule,
     PaymentsModule,
+    TicketPricesModule,
   ],
   controllers: [CheckoutController],
   providers: [CheckoutService],

@@ -7,6 +7,7 @@ import { BookingsModule } from '../bookings/bookings.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { TicketPricesModule } from '../ticket-prices/ticket-prices.module';
+import { CustomersModule } from '../customers/customers.module';
 import { CheckoutService } from './checkout.service';
 import { CheckoutController } from './checkout.controller';
 
@@ -21,6 +22,7 @@ import { CheckoutController } from './checkout.controller';
     TicketsModule,
     PaymentsModule,
     TicketPricesModule,
+    CustomersModule,
   ],
   controllers: [CheckoutController],
   providers: [CheckoutService],

@@ -56,4 +56,10 @@ export class CustomersService {
     await this.customerRepository.remove(customer);
     return { message: `Đã xóa khách hàng có id = ${id}` };
   }
+
+  // Cộng điểm tích lũy nguyên tử (UPDATE ... SET points = points + amount)
+  // — tránh race condition so với kiểu đọc-rồi-ghi thông thường.
+  async addPoints(id: number, amount: number): Promise<void> {
+    await this.customerRepository.increment({ customer_id: id }, 'points', amount);
+  }
 }

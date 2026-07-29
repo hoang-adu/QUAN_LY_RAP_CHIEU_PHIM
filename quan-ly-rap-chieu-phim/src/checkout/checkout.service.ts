@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { BookingsService } from '../bookings/bookings.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { PaymentsService } from '../payments/payments.service';
+import { CustomersService } from '../customers/customers.service';
 import { Ticket } from '../tickets/ticket.entity';
 import { Payment } from '../payments/payment.entity';
 import { Booking } from '../bookings/booking.entity';
@@ -12,6 +13,11 @@ import { Showtime } from '../showtimes/showtime.entity';
 import { TicketPricesService } from '../ticket-prices/ticket-prices.service';
 import { CheckoutBookingDto } from './dto/checkout-booking.dto';
 import { Holder } from '../seat-locks/seat-locks.service';
+
+// Điểm tích lũy cộng cho khách hàng mỗi khi 1 đơn đặt vé được xác nhận
+// (đã thanh toán xong) — áp dụng cho mọi kênh đặt vé, kể cả khi nhân viên
+// đặt/thanh toán hộ tại quầy, miễn đơn đó gắn với 1 tài khoản khách hàng.
+const BOOKING_LOYALTY_POINTS = 5;
 
 export interface CheckoutActor {
   role?: string;
@@ -38,6 +44,7 @@ export class CheckoutService {
     private readonly ticketsService: TicketsService,
     private readonly paymentsService: PaymentsService,
     private readonly ticketPricesService: TicketPricesService,
+    private readonly customersService: CustomersService,
     @InjectRepository(Ticket)
     private readonly ticketRepository: Repository<Ticket>,
     @InjectRepository(Seat)
@@ -166,6 +173,13 @@ export class CheckoutService {
       const finalBooking = await this.bookingsService.update(booking.booking_id, {
         status: finalStatus,
       });
+
+      // Đơn đã thanh toán/xác nhận xong -> cộng điểm tích lũy cho khách
+      // hàng gắn với đơn này (áp dụng cho mọi kênh: khách tự đặt hoặc
+      // nhân viên đặt/thu tiền hộ tại quầy).
+      if (payment) {
+        await this.customersService.addPoints(customerId, BOOKING_LOYALTY_POINTS);
+      }
 
       return { booking: finalBooking, tickets: createdTickets, payment };
     } catch (err) {

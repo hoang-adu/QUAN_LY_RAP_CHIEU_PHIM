@@ -28,18 +28,16 @@ interface AuthedRequest {
 export class FoodOrdersController {
   constructor(private readonly foodOrdersService: FoodOrdersService) {}
 
-  // POST /food-orders - Khách hàng đặt đồ ăn cho chính mình; nhân viên/admin
-  // tạo được cho bất kỳ khách nào (bán tại quầy)
+  // POST /food-orders - CHỈ nhân viên/admin được tạo hóa đơn đồ ăn (bán tại
+  // quầy). Khách hàng KHÔNG được gọi thẳng endpoint này nữa vì nó cho phép
+  // tự gửi total_amount tùy ý, không kiểm tra tồn kho, không trừ kho, không
+  // tạo food_order_details -> có thể làm sai lệch doanh thu/tồn kho. Đơn đồ
+  // ăn của khách phải đi qua checkout.service (đã có kiểm tra tồn kho +
+  // tính tiền đúng + trừ kho đúng).
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'employee')
   @Post()
-  create(
-    @Body() createFoodOrderDto: CreateFoodOrderDto,
-    @Request() req: AuthedRequest,
-  ) {
-    const user = req.user;
-    const isStaff = user?.role === 'admin' || user?.role === 'employee';
-    if (!isStaff && user?.customer_id !== createFoodOrderDto.customer_id) {
-      throw new ForbiddenException('Bạn chỉ có thể đặt đồ ăn cho chính mình');
-    }
+  create(@Body() createFoodOrderDto: CreateFoodOrderDto) {
     return this.foodOrdersService.create(createFoodOrderDto);
   }
 

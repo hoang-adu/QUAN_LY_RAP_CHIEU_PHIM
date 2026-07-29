@@ -287,6 +287,64 @@
   text-align: center;
 }
 
+.login-info {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #f2f6ff;
+  border: 1px solid #d6e2fb;
+  border-radius: 6px;
+  color: #2c4a8a;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+.login-info a {
+  color: #1f3d8f;
+  font-weight: 700;
+  text-decoration: none;
+}
+.login-info a:hover {
+  text-decoration: underline;
+}
+
+.fp-note {
+  text-align: left;
+}
+
+.fp-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0 20px;
+}
+.fp-contact__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.fp-contact__icon {
+  font-size: 20px;
+}
+.fp-contact__label {
+  font-size: 11px;
+  color: #888888;
+  margin-bottom: 2px;
+}
+.fp-contact__value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222222;
+  text-decoration: none;
+}
+.fp-contact__value:hover {
+  color: #e50914;
+  text-decoration: underline;
+}
+
 .login-otp-note {
   padding: 20px 10px;
   font-size: 13px;

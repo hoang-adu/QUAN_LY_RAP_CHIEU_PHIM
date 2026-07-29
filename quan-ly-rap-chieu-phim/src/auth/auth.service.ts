@@ -93,11 +93,15 @@ export class AuthService {
       full_name: employee.full_name,
       email: employee.email,
       role: employee.role,
+      position: employee.position,
     };
   }
 
   loginEmployee(
-    employee: Pick<Employee, 'employee_id' | 'email' | 'role' | 'full_name'>,
+    employee: Pick<
+      Employee,
+      'employee_id' | 'email' | 'role' | 'full_name' | 'position'
+    >,
   ) {
     const payload = {
       email: employee.email,
@@ -108,6 +112,7 @@ export class AuthService {
       access_token: this.jwtService.sign(payload),
       role: employee.role,
       full_name: employee.full_name,
+      position: employee.position,
     };
   }
 }

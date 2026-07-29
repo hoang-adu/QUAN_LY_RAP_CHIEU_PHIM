@@ -213,9 +213,9 @@ export default function LoginPage() {
                 </label>
 
                 <div className="login-forgot">
-                  <button type="button" className="login-link-btn">
+                  <Link to="/forgot-password" className="login-link-btn">
                     Quên mật khẩu?
-                  </button>
+                  </Link>
                 </div>
 
                 {error && <div className="login-error">{error}</div>}

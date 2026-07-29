@@ -55,7 +55,7 @@ export default function RegisterPage() {
       const loginRes = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ emailOrPhone: email, password }),
       });
       const loginData = await loginRes.json().catch(() => ({}));
       if (!loginRes.ok) {

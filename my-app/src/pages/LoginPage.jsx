@@ -94,23 +94,22 @@ export default function LoginPage() {
         return;
       }
 
-      // Nếu ô "tài khoản" nhập dạng email -> thử đăng nhập Khách hàng
-      if (username.includes("@")) {
-        const custRes = await fetch(`${API_BASE}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: username, password }),
-        });
-        const custData = await custRes.json().catch(() => ({}));
-        if (custRes.ok) {
-          saveAuth(custData);
-          navigate("/account", { replace: true });
-          return;
-        }
-        throw new Error(custData.message || "Tài khoản hoặc mật khẩu không đúng");
+      // Thử đăng nhập Khách hàng bằng email hoặc số điện thoại
+      const custRes = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOrPhone: username, password }),
+      });
+      const custData = await custRes.json().catch(() => ({}));
+      if (custRes.ok) {
+        saveAuth(custData);
+        navigate("/account", { replace: true });
+        return;
       }
 
-      throw new Error(empData.message || "Tài khoản hoặc mật khẩu không đúng");
+      throw new Error(
+        custData.message || empData.message || "Tài khoản hoặc mật khẩu không đúng",
+      );
     } catch (err) {
       setError(err.message);
     } finally {

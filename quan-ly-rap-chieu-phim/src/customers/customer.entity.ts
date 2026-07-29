@@ -8,7 +8,7 @@ export class Customer {
   @Column({ length: 100, nullable: true })
   full_name: string;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ length: 20, unique: true, nullable: true })
   phone: string;
 
   @Column({ length: 100, unique: true, nullable: true })

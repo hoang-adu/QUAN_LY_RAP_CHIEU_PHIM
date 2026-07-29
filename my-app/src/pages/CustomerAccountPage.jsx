@@ -45,6 +45,7 @@ function TicketPoster({ src, alt }) {
 
 export default function CustomerAccountPage() {
   const auth = getAuth();
+  const [showRedeemNote, setShowRedeemNote] = React.useState(false);
 
   // GET /bookings đã tự lọc theo customer đang đăng nhập ở phía backend.
   const bookings = useApiList("bookings");
@@ -114,6 +115,18 @@ export default function CustomerAccountPage() {
           <div className="ac-membercard__points">
             <span>⭐ Điểm tích lũy</span>
             <strong>{auth?.points ?? 0}</strong>
+            <button
+              type="button"
+              className="ac-membercard__redeem-btn"
+              onClick={() => setShowRedeemNote((v) => !v)}
+            >
+              Đổi điểm lấy voucher
+            </button>
+            {showRedeemNote && (
+              <div className="ac-membercard__redeem-note">
+                Tính năng đang được phát triển
+              </div>
+            )}
           </div>
           <div className="ac-membercard__grid">
             <div>

@@ -39,6 +39,16 @@ export class CustomersService {
     return this.customerRepository.findOne({ where: { email } });
   }
 
+  async findByEmailOrPhone(emailOrPhone: string): Promise<Customer | null> {
+    return this.customerRepository.findOne({
+      where: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    });
+  }
+
+  async findByPhone(phone: string): Promise<Customer | null> {
+    return this.customerRepository.findOne({ where: { phone } });
+  }
+
   async update(
     id: number,
     updateCustomerDto: UpdateCustomerDto,

@@ -7,13 +7,18 @@ import { AuthService } from './auth.service';
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly authService: AuthService) {
-    super({ usernameField: 'email', passwordField: 'password' });
+    super({ usernameField: 'emailOrPhone', passwordField: 'password' });
   }
 
-  async validate(email: string, password: string) {
-    const customer = await this.authService.validateUser(email, password);
+  async validate(emailOrPhone: string, password: string) {
+    const customer = await this.authService.validateUser(
+      emailOrPhone,
+      password,
+    );
     if (!customer) {
-      throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
+      throw new UnauthorizedException(
+        'Email/Số điện thoại hoặc mật khẩu không đúng',
+      );
     }
     return customer;
   }

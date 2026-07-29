@@ -23,6 +23,7 @@ import { TicketPricesModule } from './ticket-prices/ticket-prices.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 import { FoodOrdersModule } from './food-orders/food-orders.module';
+import { StatsModule } from './stats/stats.module';
 
 // Cookies + Session
 import { CookiesModule } from './cookies/cookies.module';
@@ -71,6 +72,7 @@ import { UploadsModule } from './uploads/uploads.module';
     PaymentsModule,
     ProductsModule,
     FoodOrdersModule,
+    StatsModule,
 
     // Cookies + Session
     CookiesModule,

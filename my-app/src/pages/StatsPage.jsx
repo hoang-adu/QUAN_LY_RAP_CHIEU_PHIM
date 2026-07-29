@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import useApiList from "../api/useApiList";
+import useApiGet from "../api/useApiGet";
 import "./table.css";
 import "../components/ui.css";
 
@@ -9,17 +10,14 @@ function fmtVND(n) {
   return (n || 0).toLocaleString("vi-VN") + " đ";
 }
 
-function toDateKey(d) {
-  return new Date(d).toISOString().slice(0, 10);
+// Nhãn hiển thị "d/m" từ key "YYYY-MM-DD" — tách chuỗi trực tiếp, KHÔNG đi
+// qua Date/toISOString, để tránh lệch ngày do timezone trình duyệt.
+function labelFromKey(key) {
+  const [, m, d] = key.split("-");
+  return `${Number(d)}/${Number(m)}`;
 }
 
 export default function StatsPage() {
-  const payments = useApiList("payments");
-  const bookings = useApiList("bookings");
-  const tickets = useApiList("tickets");
-  const showtimes = useApiList("showtimes");
-  const movies = useApiList("movies");
-
   const today = new Date();
   const twoWeeksAgo = new Date(today);
   twoWeeksAgo.setDate(today.getDate() - 13);
@@ -27,72 +25,35 @@ export default function StatsPage() {
   const [fromDate, setFromDate] = useState(twoWeeksAgo.toISOString().slice(0, 10));
   const [toDate, setToDate] = useState(today.toISOString().slice(0, 10));
 
-  const loading =
-    payments.loading || bookings.loading || tickets.loading || showtimes.loading || movies.loading;
+  // Gọi thẳng các endpoint tổng hợp ở backend (SUM/GROUP BY chạy trong SQL)
+  // thay vì tải nguyên bảng payments/bookings/tickets/showtimes/movies về
+  // trình duyệt rồi tự cộng bằng tay — nhanh hơn và không phải tải lại toàn
+  // bộ lịch sử giao dịch mỗi lần mở trang.
+  const overview = useApiGet(`stats/overview?from=${fromDate}&to=${toDate}`);
+  const revenueDaily = useApiList(`stats/revenue-by-day?from=${fromDate}&to=${toDate}`);
+  const topMoviesData = useApiList(`stats/top-movies?limit=5`);
 
-  const paidPayments = useMemo(
-    () =>
-      payments.rows.filter((p) => {
-        if ((p.payment_status || "").toLowerCase() !== "paid") return false;
-        const key = toDateKey(p.payment_date);
-        return key >= fromDate && key <= toDate;
-      }),
-    [payments.rows, fromDate, toDate],
+  const loading = overview.loading || revenueDaily.loading || topMoviesData.loading;
+  const loadError = overview.error || revenueDaily.error || topMoviesData.error;
+
+  const totalRevenue = overview.data?.totalRevenue || 0;
+  const bookingStatusCounts = overview.data?.bookingStatusCounts || {
+    pending: 0,
+    confirmed: 0,
+    cancelled: 0,
+  };
+
+  // revenueDaily.rows đã là đủ cả khoảng ngày đã chọn (kể cả ngày không có
+  // doanh thu = 0) — dùng thẳng để xuất Excel; biểu đồ chỉ hiện tối đa 14
+  // cột gần nhất cho gọn.
+  const revenueByDayFull = revenueDaily.rows;
+  const revenueByDay = useMemo(
+    () => revenueByDayFull.slice(-14).map((d) => ({ ...d, label: labelFromKey(d.key) })),
+    [revenueByDayFull],
   );
-
-  const totalRevenue = paidPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
-  const bookingStatusCounts = useMemo(() => {
-    const c = { pending: 0, confirmed: 0, cancelled: 0 };
-    bookings.rows.forEach((b) => {
-      const s = (b.status || "pending").toLowerCase();
-      if (c[s] !== undefined) c[s] += 1;
-    });
-    return c;
-  }, [bookings.rows]);
-
-  // Doanh thu theo ngày trong TOÀN BỘ khoảng đã chọn (dùng để xuất Excel).
-  const revenueByDayFull = useMemo(() => {
-    const map = {};
-    paidPayments.forEach((p) => {
-      const key = toDateKey(p.payment_date);
-      map[key] = (map[key] || 0) + Number(p.amount || 0);
-    });
-    const days = [];
-    const cur = new Date(fromDate);
-    const end = new Date(toDate);
-    while (cur <= end) {
-      const key = cur.toISOString().slice(0, 10);
-      days.push({ key, label: `${cur.getDate()}/${cur.getMonth() + 1}`, value: map[key] || 0 });
-      cur.setDate(cur.getDate() + 1);
-    }
-    return days;
-  }, [paidPayments, fromDate, toDate]);
-
-  // Biểu đồ chỉ hiện tối đa 14 cột gần nhất cho gọn; file Excel xuất đủ cả
-  // khoảng ngày đã chọn (revenueByDayFull).
-  const revenueByDay = useMemo(() => revenueByDayFull.slice(-14), [revenueByDayFull]);
-
   const maxDay = Math.max(1, ...revenueByDay.map((d) => d.value));
 
-  // Top phim theo số vé bán ra
-  const topMovies = useMemo(() => {
-    const showtimeToMovie = Object.fromEntries(
-      showtimes.rows.map((s) => [String(s.showtime_id), s.movie_id]),
-    );
-    const movieName = Object.fromEntries(movies.rows.map((m) => [String(m.movie_id), m.title]));
-    const countByMovie = {};
-    tickets.rows.forEach((t) => {
-      const movieId = showtimeToMovie[String(t.showtime_id)];
-      if (movieId == null) return;
-      countByMovie[movieId] = (countByMovie[movieId] || 0) + 1;
-    });
-    return Object.entries(countByMovie)
-      .map(([movieId, count]) => ({ name: movieName[movieId] || `#${movieId}`, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [tickets.rows, showtimes.rows, movies.rows]);
-
+  const topMovies = topMoviesData.rows;
   const maxTicketCount = Math.max(1, ...topMovies.map((m) => m.count));
 
   function handleExportExcel() {
@@ -155,7 +116,9 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {loading ? (
+      {loadError ? (
+        <div className="et-status">Không thể tải dữ liệu thống kê: {loadError}</div>
+      ) : loading ? (
         <div className="et-status">Đang tải dữ liệu thống kê...</div>
       ) : (
         <>
@@ -206,7 +169,7 @@ export default function StatsPage() {
           ) : (
             <div className="et-table-wrap" style={{ padding: "18px 20px" }}>
               {topMovies.map((m) => (
-                <div className="hbar-row" key={m.name}>
+                <div className="hbar-row" key={m.movie_id ?? m.name}>
                   <span>{m.name}</span>
                   <div className="hbar-track">
                     <div

@@ -415,3 +415,39 @@
     padding: 0 !important;
   }
 }
+/* ---------- ImageField (poster/ảnh: dán URL hoặc tải lên) ---------- */
+.ui-image-field__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ui-image-field__row input[type="text"] {
+  flex: 1;
+  border: 1px solid var(--border, #e3e7f1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.8px;
+  font-family: inherit;
+  color: var(--text-dark, #1d2739);
+}
+.ui-image-field__row input[type="text"]:focus {
+  outline: 2px solid var(--navy-light, #1f3566);
+}
+.ui-image-field__row .ui-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ui-image-field__error {
+  color: #b8232a;
+  font-size: 11.5px;
+  margin-top: 6px;
+}
+.ui-image-field__preview {
+  display: block;
+  margin-top: 8px;
+  max-height: 120px;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e3e7f1);
+  object-fit: cover;
+}

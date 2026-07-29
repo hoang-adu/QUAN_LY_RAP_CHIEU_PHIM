@@ -5,6 +5,7 @@ import React, { useMemo, useState } from "react";
 import DataTable from "../pages/DataTable";
 import Modal from "./Modal";
 import ConfirmDialog from "./ConfirmDialog";
+import ImageField from "./ImageField";
 import { useToast } from "./ToastContext";
 import { createItem, updateItem, removeItem } from "../api/apiClient";
 import "./ui.css";
@@ -181,14 +182,9 @@ export default function CrudSection({
         columns={columns}
         onRowClick={renderDetail ? openDetail : undefined}
         actions={
-          renderDetail || canEdit || canDelete
+          canEdit || canDelete
             ? (row) => (
                 <>
-                  {renderDetail && (
-                    <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => openDetail(row)}>
-                      Xem
-                    </button>
-                  )}
                   {canEdit && (
                     <button className="ui-btn ui-btn-ghost ui-btn-sm" onClick={() => openEdit(row)}>
                       Sửa
@@ -249,6 +245,13 @@ export default function CrudSection({
                     placeholder={f.placeholder}
                     onChange={(e) => setField(f.name, e.target.value)}
                   />
+                ) : f.type === "image" ? (
+                  <ImageField
+                    value={values[f.name] ?? ""}
+                    onChange={(v) => setField(f.name, v)}
+                    folder={f.folder}
+                    placeholder={f.placeholder}
+                  />
                 ) : (
                   <input
                     type={f.type || "text"}
@@ -260,6 +263,8 @@ export default function CrudSection({
                     }
                     onChange={(e) => setField(f.name, e.target.value)}
                     step={f.type === "number" ? f.step || "any" : undefined}
+                    min={typeof f.min === "function" ? f.min(editingRow) : f.min}
+                    max={typeof f.max === "function" ? f.max(editingRow) : f.max}
                     disabled={
                       typeof f.disabled === "function" ? f.disabled(editingRow) : f.disabled
                     }
@@ -285,7 +290,7 @@ export default function CrudSection({
           open={!!detailRow}
           onClose={closeDetail}
           title={detailRow ? (detailTitle ? detailTitle(detailRow) : title) : ""}
-          width={620}
+          width={680}
         >
           {detailRow && renderDetail(detailRow)}
         </Modal>

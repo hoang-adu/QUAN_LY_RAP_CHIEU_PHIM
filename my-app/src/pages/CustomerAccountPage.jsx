@@ -7,6 +7,7 @@ import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { getAuth } from "../api/auth";
 import useApiList from "../api/useApiList";
+import { resolveAssetUrl } from "../api/apiClient";
 import CustomerLayout from "../layout/CustomerLayout";
 import "./customerAccount.css";
 
@@ -28,13 +29,14 @@ function formatDate(iso) {
 // hoặc link ảnh lỗi.
 function TicketPoster({ src, alt }) {
   const [broken, setBroken] = React.useState(false);
-  if (!src || broken) {
+  const resolvedSrc = src ? resolveAssetUrl(src) : null;
+  if (!resolvedSrc || broken) {
     return <div className="ac-ticket__poster">🎬</div>;
   }
   return (
     <img
       className="ac-ticket__poster ac-ticket__poster--img"
-      src={src}
+      src={resolvedSrc}
       alt={alt}
       onError={() => setBroken(true)}
     />

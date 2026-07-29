@@ -28,6 +28,9 @@ import { CookiesModule } from './cookies/cookies.module';
 import { SessionModule } from './session/session.module';
 import { AuthModule } from './auth/auth.module';
 
+// Upload ảnh (poster phim, ảnh sản phẩm...)
+import { UploadsModule } from './uploads/uploads.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -71,6 +74,7 @@ import { AuthModule } from './auth/auth.module';
     CookiesModule,
     SessionModule,
     AuthModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -52,7 +53,22 @@ export class ShowtimesService {
     }
   }
 
+  // Không cho tạo suất chiếu mới với ngày đã qua — chỉ áp dụng khi TẠO MỚI,
+  // không áp dụng khi UPDATE để không chặn việc admin sửa lại 1 suất cũ đã
+  // lỡ nhập sai (vd. đổi phòng/giờ cho 1 suất đã diễn ra để khớp lịch sử).
+  private assertNotPastDate(showDate: string | undefined): void {
+    if (!showDate) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (showDate < todayStr) {
+      throw new BadRequestException(
+        `Không thể tạo suất chiếu cho ngày ${showDate} vì đây là ngày đã qua. ` +
+          `Vui lòng chọn ngày từ hôm nay (${todayStr}) trở đi.`,
+      );
+    }
+  }
+
   async create(createShowtimeDto: CreateShowtimeDto): Promise<Showtime> {
+    this.assertNotPastDate(createShowtimeDto.show_date);
     await this.assertNoConflict(
       createShowtimeDto.room_id,
       createShowtimeDto.show_date,
@@ -64,7 +80,11 @@ export class ShowtimesService {
   }
 
   async findAll(): Promise<Showtime[]> {
-    return this.showtimeRepository.find({ order: { showtime_id: 'ASC' } });
+    // Sắp theo ngày + giờ chiếu (không phải theo id/thứ tự tạo), để suất mới
+    // tạo hiện đúng vị trí theo thời gian chiếu thay vì luôn rơi xuống cuối bảng.
+    return this.showtimeRepository.find({
+      order: { show_date: 'ASC', start_time: 'ASC' },
+    });
   }
 
   async findOne(id: number): Promise<Showtime> {

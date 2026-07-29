@@ -7,7 +7,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useApiList from "../api/useApiList";
-import { createItem } from "../api/apiClient";
+import { createItem, resolveAssetUrl } from "../api/apiClient";
 import useSeatLocks from "../api/useSeatLocks";
 import { getCustomerId } from "../api/auth";
 import { priceForSeatType, SEAT_TYPE_LABELS } from "../utils/seatPricing";
@@ -22,7 +22,8 @@ const POSTER_THEMES = ["t1", "t2", "t3", "t4", "t5", "t6"];
 // poster hoặc link ảnh bị lỗi thì mới rơi về icon 🎬 nền màu như trước.
 function MoviePoster({ src, alt, theme, selected }) {
   const [broken, setBroken] = React.useState(false);
-  const showFallback = !src || broken;
+  const resolvedSrc = src ? resolveAssetUrl(src) : null;
+  const showFallback = !resolvedSrc || broken;
   return (
     <div className={"cb-movie-poster " + theme}>
       {showFallback ? (
@@ -30,7 +31,7 @@ function MoviePoster({ src, alt, theme, selected }) {
       ) : (
         <img
           className="cb-movie-poster__img"
-          src={src}
+          src={resolvedSrc}
           alt={alt}
           onError={() => setBroken(true)}
         />

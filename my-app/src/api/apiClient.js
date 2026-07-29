@@ -12,6 +12,18 @@ function authHeaders() {
     : {};
 }
 
+// Ảnh có thể là 1 URL đầy đủ (khách dán link ngoài, vd. https://...) hoặc
+// đường dẫn tương đối do chính backend trả về sau khi upload (vd.
+// "/uploads/movies/xxx.jpg") — trường hợp sau cần ghép thêm API_BASE mới
+// hiển thị được đúng ảnh (ảnh nằm trên server backend, không phải FE).
+export function resolveAssetUrl(pathOrUrl) {
+  if (!pathOrUrl) return pathOrUrl;
+  if (/^https?:\/\//i.test(pathOrUrl) || pathOrUrl.startsWith("data:")) {
+    return pathOrUrl;
+  }
+  return `${API_BASE}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+}
+
 async function handleResponse(res) {
   if (res.status === 401) {
     // Token hết hạn hoặc không hợp lệ -> bắt đăng nhập lại

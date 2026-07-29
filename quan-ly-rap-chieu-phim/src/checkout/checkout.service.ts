@@ -14,6 +14,8 @@ import { TicketPricesService } from '../ticket-prices/ticket-prices.service';
 import { CheckoutBookingDto } from './dto/checkout-booking.dto';
 import { Holder, SeatLocksService } from '../seat-locks/seat-locks.service';
 
+// Điểm tích lũy chỉ cộng khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
+// mình — nhân viên/admin đặt hộ tại quầy thì không được cộng.
 const BOOKING_LOYALTY_POINTS = 5;
 
 export interface CheckoutActor {
@@ -180,8 +182,13 @@ export class CheckoutService {
         }));
         booking.status = 'confirmed';
         booking = await bookingRepo.save(booking);
-        customer.points = Number(customer.points ?? 0) + BOOKING_LOYALTY_POINTS;
-        await customerRepo.save(customer);
+        // Chỉ cộng điểm khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
+        // mình. Nhân viên/admin tạo vé hộ tại quầy thì KHÔNG cộng điểm,
+        // kể cả khi khách đó đã có tài khoản khách hàng.
+        if (!isStaff) {
+          customer.points = Number(customer.points ?? 0) + BOOKING_LOYALTY_POINTS;
+          await customerRepo.save(customer);
+        }
       }
 
       return { booking, tickets, payment, food_order: foodOrder, food_details: foodDetails, ticket_total: ticketTotal, food_total: foodTotal };

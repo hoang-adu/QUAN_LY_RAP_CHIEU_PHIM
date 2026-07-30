@@ -61,7 +61,7 @@ export default function EmployeesPage() {
   return (
     <CrudSection
       title="Nhân viên"
-      subtitle="Dữ liệu thật từ API /employees — chỉ Admin có quyền truy cập trang này"
+      subtitle="Chỉ Admin có quyền truy cập trang này"
       apiPath="employees"
       idKey="employee_id"
       rows={rows}

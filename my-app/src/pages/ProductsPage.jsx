@@ -39,7 +39,6 @@ export default function ProductsPage() {
     <>
       <CrudSection
         title="Sản phẩm & Đồ ăn"
-        subtitle="Dữ liệu thật từ API /products"
         apiPath="products"
         idKey="product_id"
         rows={products.rows}

@@ -1,23 +1,20 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { BookingsService } from '../bookings/bookings.service';
-import { TicketsService } from '../tickets/tickets.service';
-import { PaymentsService } from '../payments/payments.service';
-import { CustomersService } from '../customers/customers.service';
+import { DataSource, In, Repository } from 'typeorm';
 import { Ticket } from '../tickets/ticket.entity';
 import { Payment } from '../payments/payment.entity';
 import { Booking } from '../bookings/booking.entity';
 import { Seat } from '../seats/seat.entity';
 import { Showtime } from '../showtimes/showtime.entity';
+import { Product } from '../products/product.entity';
+import { FoodOrder } from '../food-orders/food-order.entity';
+import { FoodOrderDetail } from '../food-orders/food-order-detail.entity';
+import { Customer } from '../customers/customer.entity';
+import { Voucher } from '../vouchers/voucher.entity';
 import { TicketPricesService } from '../ticket-prices/ticket-prices.service';
 import { CheckoutBookingDto } from './dto/checkout-booking.dto';
-import { Holder } from '../seat-locks/seat-locks.service';
-
-// Điểm tích lũy cộng cho khách hàng mỗi khi 1 đơn đặt vé được xác nhận
-// (đã thanh toán xong) — áp dụng cho mọi kênh đặt vé, kể cả khi nhân viên
-// đặt/thanh toán hộ tại quầy, miễn đơn đó gắn với 1 tài khoản khách hàng.
-const BOOKING_LOYALTY_POINTS = 5;
+import { Holder, SeatLocksService } from '../seat-locks/seat-locks.service';
+import { EARN_POINTS_PERCENT, POINT_VALUE_VND } from '../vouchers/vouchers.constants';
 
 export interface CheckoutActor {
   role?: string;
@@ -25,169 +22,236 @@ export interface CheckoutActor {
   employee_id?: number;
 }
 
-// ─────────────────────────────────────────────────────────────────
-// CHECKOUT — thay thế luồng cũ mà FE phải tự gọi TUẦN TỰ 3 API riêng
-// (POST /bookings -> POST /tickets x N -> POST /payments). Gộp lại thành
-// 1 API duy nhất:
-//   - Đơn giản hoá phía FE: 1 lần gọi, 1 chỗ xử lý lỗi.
-//   - Không còn "đơn mồ côi": nếu tạo vé cho ghế thứ 2 thất bại (vd. vừa bị
-//     người khác mua) thì booking + các vé đã tạo trước đó trong lần
-//     checkout này sẽ được XOÁ SẠCH (bù trừ/compensate), thay vì để lại
-//     1 booking dở dang không ai dọn.
-//   - Tự động chuyển trạng thái đơn -> 'confirmed' ngay khi đã thu tiền
-//     xong, khỏi cần thêm 1 bước nhân viên bấm "Xác nhận" thủ công nữa.
-// ─────────────────────────────────────────────────────────────────
+export interface CheckoutResult {
+  booking: Booking;
+  tickets: Ticket[];
+  payment: Payment | null;
+  food_order: FoodOrder | null;
+  food_details: FoodOrderDetail[];
+  ticket_total: number;
+  food_total: number;
+  discount_amount: number;
+  voucher: Voucher | null;
+  points_earned: number;
+}
+
 @Injectable()
 export class CheckoutService {
   constructor(
-    private readonly bookingsService: BookingsService,
-    private readonly ticketsService: TicketsService,
-    private readonly paymentsService: PaymentsService,
+    private readonly dataSource: DataSource,
     private readonly ticketPricesService: TicketPricesService,
-    private readonly customersService: CustomersService,
-    @InjectRepository(Ticket)
-    private readonly ticketRepository: Repository<Ticket>,
-    @InjectRepository(Seat)
-    private readonly seatRepository: Repository<Seat>,
-    @InjectRepository(Showtime)
-    private readonly showtimeRepository: Repository<Showtime>,
+    private readonly seatLocksService: SeatLocksService,
+    @InjectRepository(Seat) private readonly seatRepository: Repository<Seat>,
+    @InjectRepository(Showtime) private readonly showtimeRepository: Repository<Showtime>,
   ) {}
 
-  async checkout(
-    dto: CheckoutBookingDto,
-    actor: CheckoutActor,
-  ): Promise<{ booking: Booking; tickets: Ticket[]; payment: Payment | null }> {
-    const isStaff = actor.role === 'admin' || actor.role === 'employee';
+  private async generateTicketCode(manager: any): Promise<string> {
+    const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for (let attempt = 0; attempt < 20; attempt++) {
+      let code = 'VE-';
+      for (let i = 0; i < 6; i++) code += charset[Math.floor(Math.random() * charset.length)];
+      const exists = await manager.getRepository(Ticket).findOne({ where: { ticket_code: code } });
+      if (!exists) return code;
+    }
+    throw new BadRequestException('Không thể sinh mã vé, vui lòng thử lại.');
+  }
 
-    // Khách hàng tự đặt: LUÔN lấy customer_id từ token, không tin FE gửi
-    // lên (tránh khách sửa request để đặt vé "hộ" người khác).
-    if (!isStaff) {
-      if (dto.customer_id && Number(dto.customer_id) !== Number(actor.customer_id)) {
-        throw new ForbiddenException('Bạn chỉ có thể đặt vé cho chính mình');
-      }
+  async checkout(dto: CheckoutBookingDto, actor: CheckoutActor): Promise<CheckoutResult> {
+    const isStaff = actor.role === 'admin' || actor.role === 'employee';
+    if (!isStaff && dto.customer_id && Number(dto.customer_id) !== Number(actor.customer_id)) {
+      throw new ForbiddenException('Bạn chỉ có thể đặt vé cho chính mình');
     }
     const customerId = isStaff ? dto.customer_id : actor.customer_id;
-    if (!customerId) {
-      throw new BadRequestException(
-        isStaff
-          ? 'Vui lòng chọn khách hàng trước khi tạo đơn.'
-          : 'Không xác định được tài khoản khách hàng, vui lòng đăng nhập lại.',
-      );
-    }
+    if (!customerId) throw new BadRequestException('Không xác định được khách hàng.');
 
     const seatDtos = dto.seats ?? [];
-    if (seatDtos.length === 0) {
-      throw new BadRequestException('Vui lòng chọn ít nhất 1 ghế.');
-    }
-    // Không cho chọn trùng 1 ghế 2 lần trong cùng 1 lần đặt.
-    const uniqueSeatIds = new Set(seatDtos.map((s) => s.seat_id));
-    if (uniqueSeatIds.size !== seatDtos.length) {
-      throw new BadRequestException('Danh sách ghế bị trùng, vui lòng kiểm tra lại.');
-    }
+    if (!seatDtos.length) throw new BadRequestException('Vui lòng chọn ít nhất 1 ghế.');
+    const uniqueSeatIds = [...new Set(seatDtos.map((s) => Number(s.seat_id)))];
+    if (uniqueSeatIds.length !== seatDtos.length) throw new BadRequestException('Danh sách ghế bị trùng.');
 
-    // Xác thực suất chiếu tồn tại, và TỰ TÍNH GIÁ VÉ theo seat_type thật
-    // trong DB — không tin ticket_price mà client gửi lên (client có thể
-    // sửa request để trả giá thấp hơn thực tế).
-    const showtime = await this.showtimeRepository.findOne({
-      where: { showtime_id: dto.showtime_id },
-    });
-    if (!showtime) {
-      throw new NotFoundException(`Không tìm thấy suất chiếu #${dto.showtime_id}`);
+    const foodItems = dto.food_items ?? [];
+    const mergedFood = new Map<number, number>();
+    for (const item of foodItems) {
+      mergedFood.set(Number(item.product_id), (mergedFood.get(Number(item.product_id)) ?? 0) + Number(item.quantity));
     }
 
-    const seatEntities = await this.seatRepository.findBy({
-      seat_id: In(Array.from(uniqueSeatIds)),
-    });
-    const seatById = new Map(seatEntities.map((s) => [s.seat_id, s]));
-
-    // Lấy TOÀN BỘ bảng giá hiện hành 1 LẦN trước vòng lặp (thay vì gọi lại
-    // cho từng ghế) — vừa nhanh hơn, vừa đảm bảo mọi ghế trong CÙNG 1 lần
-    // checkout này dùng chung 1 "phiên bản giá" nhất quán, không bị lệch
-    // nếu chẳng may admin đổi giá đúng lúc khách đang bấm thanh toán.
+    const showtime = await this.showtimeRepository.findOne({ where: { showtime_id: dto.showtime_id } });
+    if (!showtime) throw new NotFoundException(`Không tìm thấy suất chiếu #${dto.showtime_id}`);
+    const seatEntities = await this.seatRepository.findBy({ seat_id: In(uniqueSeatIds) });
+    const seatById = new Map(seatEntities.map((s) => [Number(s.seat_id), s]));
     const currentPrices = await this.ticketPricesService.getCurrentPrices();
-
-    const seats: Array<{ seat_id: number; ticket_price: number }> = [];
-    for (const s of seatDtos) {
-      const seat = seatById.get(s.seat_id);
-      if (!seat) {
-        throw new BadRequestException(`Không tìm thấy ghế #${s.seat_id}`);
-      }
+    const seats = uniqueSeatIds.map((seatId) => {
+      const seat = seatById.get(seatId);
+      if (!seat) throw new BadRequestException(`Không tìm thấy ghế #${seatId}`);
       if (Number(seat.room_id) !== Number(showtime.room_id)) {
-        throw new BadRequestException(
-          `Ghế #${s.seat_id} không thuộc phòng chiếu của suất chiếu #${dto.showtime_id}`,
-        );
+        throw new BadRequestException(`Ghế #${seatId} không thuộc phòng của suất chiếu.`);
       }
-      const price =
-        seat.seat_type && currentPrices[seat.seat_type] != null
-          ? currentPrices[seat.seat_type]
-          : currentPrices.standard;
-      seats.push({ seat_id: s.seat_id, ticket_price: price });
-    }
-
-    const totalAmount = seats.reduce((sum, s) => sum + s.ticket_price, 0);
-
-    const booking = await this.bookingsService.create({
-      customer_id: customerId,
-      total_amount: totalAmount,
-      status: 'pending',
+      const price = Number(currentPrices[seat.seat_type] ?? currentPrices.standard);
+      return { seat_id: seatId, ticket_price: price };
     });
 
     const holder: Holder = isStaff
-      ? { holder_type: 'employee', holder_id: actor.employee_id as number }
-      : { holder_type: 'customer', holder_id: actor.customer_id as number };
+      ? { holder_type: 'employee', holder_id: Number(actor.employee_id) }
+      : { holder_type: 'customer', holder_id: Number(actor.customer_id) };
+    for (const seat of seats) {
+      await this.seatLocksService.assertAvailableFor(dto.showtime_id, seat.seat_id, holder);
+    }
 
-    const createdTickets: Ticket[] = [];
-    try {
-      // Tạo vé LẦN LƯỢT cho từng ghế (không song song) để tận dụng đúng cơ
-      // chế "dùng chung ticket_code theo booking_id" đã có sẵn trong
-      // TicketsService.create — vé đầu tiên sinh mã, các vé sau tự nhận
-      // lại đúng mã đó.
+    const result = await this.dataSource.transaction(async (manager) => {
+      const bookingRepo = manager.getRepository(Booking);
+      const ticketRepo = manager.getRepository(Ticket);
+      const paymentRepo = manager.getRepository(Payment);
+      const productRepo = manager.getRepository(Product);
+      const foodOrderRepo = manager.getRepository(FoodOrder);
+      const detailRepo = manager.getRepository(FoodOrderDetail);
+      const customerRepo = manager.getRepository(Customer);
+      const voucherRepo = manager.getRepository(Voucher);
+
+      // Khóa dòng khách hàng ngay từ đầu transaction — sau này sẽ đọc/ghi
+      // customer.points (cộng điểm tích lũy), giống cách vouchers.service.ts
+      // khóa dòng này khi đổi điểm, để 2 giao dịch cùng lúc trên 1 khách
+      // hàng (vừa đặt vé vừa đổi voucher) không làm mất cập nhật của nhau.
+      const customer = await customerRepo
+        .createQueryBuilder('c')
+        .setLock('pessimistic_write')
+        .where('c.customer_id = :id', { id: Number(customerId) })
+        .getOne();
+      if (!customer) throw new NotFoundException(`Không tìm thấy khách hàng #${customerId}`);
+
       for (const seat of seats) {
-        const ticket = await this.ticketsService.create(
-          {
-            booking_id: booking.booking_id,
-            showtime_id: dto.showtime_id,
-            seat_id: seat.seat_id,
-            ticket_price: seat.ticket_price,
-          },
-          holder,
-          isStaff,
-        );
-        createdTickets.push(ticket);
+        const existing = await ticketRepo.createQueryBuilder('t')
+          .setLock('pessimistic_write')
+          .where('t.showtime_id = :showtimeId', { showtimeId: dto.showtime_id })
+          .andWhere('t.seat_id = :seatId', { seatId: seat.seat_id })
+          .getOne();
+        if (existing) throw new BadRequestException(`Ghế #${seat.seat_id} đã được đặt.`);
+      }
+
+      const productRows: Product[] = [];
+      for (const [productId, quantity] of mergedFood) {
+        const product = await productRepo.createQueryBuilder('p')
+          .setLock('pessimistic_write')
+          .where('p.product_id = :productId', { productId })
+          .getOne();
+        if (!product) throw new NotFoundException(`Không tìm thấy sản phẩm #${productId}`);
+        if (Number(product.stock_quantity ?? 0) < quantity) {
+          throw new BadRequestException(`${product.product_name} chỉ còn ${product.stock_quantity ?? 0} sản phẩm.`);
+        }
+        productRows.push(product);
+      }
+
+      const ticketTotal = seats.reduce((sum, s) => sum + Number(s.ticket_price), 0);
+      const foodTotal = productRows.reduce(
+        (sum, p) => sum + Number(p.price) * Number(mergedFood.get(Number(p.product_id))), 0,
+      );
+      const grandTotal = ticketTotal + foodTotal;
+
+      // Áp dụng voucher giảm giá (nếu có). Chỉ cho phép khi thu tiền ngay
+      // (dto.pay !== false), vì voucher chỉ được đánh dấu "đã dùng" tại
+      // đúng thời điểm thanh toán thành công — tránh vừa giảm giá vừa để
+      // đơn ở trạng thái "pending" chưa trả tiền.
+      let voucher: Voucher | null = null;
+      let discountAmount = 0;
+      if (dto.voucher_code) {
+        if (dto.pay === false) {
+          throw new BadRequestException('Chỉ áp dụng voucher khi thanh toán ngay.');
+        }
+        voucher = await voucherRepo.createQueryBuilder('v')
+          .setLock('pessimistic_write')
+          .where('v.code = :code', { code: dto.voucher_code })
+          .getOne();
+        if (!voucher) throw new NotFoundException('Không tìm thấy voucher.');
+        if (Number(voucher.customer_id) !== Number(customerId)) {
+          throw new ForbiddenException('Voucher không thuộc về khách hàng này.');
+        }
+        if (voucher.expires_at && voucher.expires_at.getTime() < Date.now() && voucher.status === 'unused') {
+          voucher.status = 'expired';
+          await voucherRepo.save(voucher);
+        }
+        if (voucher.status !== 'unused') {
+          throw new BadRequestException('Voucher đã được sử dụng hoặc không còn hiệu lực.');
+        }
+        discountAmount = Math.min(Number(voucher.discount_amount), grandTotal);
+      }
+      const payableTotal = grandTotal - discountAmount;
+
+      let booking = await bookingRepo.save(bookingRepo.create({
+        customer_id: Number(customerId), total_amount: payableTotal, status: 'pending',
+      }));
+      const ticketCode = await this.generateTicketCode(manager);
+      const tickets = await ticketRepo.save(seats.map((seat) => ticketRepo.create({
+        booking_id: booking.booking_id,
+        showtime_id: dto.showtime_id,
+        seat_id: seat.seat_id,
+        ticket_price: seat.ticket_price,
+        ticket_code: ticketCode,
+        is_picked_up: isStaff,
+        picked_up_at: isStaff ? new Date() : null,
+      })));
+
+      let foodOrder: FoodOrder | null = null;
+      let foodDetails: FoodOrderDetail[] = [];
+      if (productRows.length) {
+        foodOrder = await foodOrderRepo.save(foodOrderRepo.create({
+          booking_id: booking.booking_id,
+          customer_id: Number(customerId),
+          total_amount: foodTotal,
+          status: dto.pay === false ? 'pending' : 'paid',
+        }));
+        foodDetails = await detailRepo.save(productRows.map((product) => detailRepo.create({
+          order_id: foodOrder!.order_id,
+          product_id: product.product_id,
+          quantity: Number(mergedFood.get(Number(product.product_id))),
+          unit_price: Number(product.price),
+        })));
+        for (const product of productRows) {
+          product.stock_quantity = Number(product.stock_quantity) - Number(mergedFood.get(Number(product.product_id)));
+        }
+        await productRepo.save(productRows);
       }
 
       let payment: Payment | null = null;
-      const wantsPay = dto.pay !== false; // mặc định thu tiền ngay
-      if (wantsPay) {
-        payment = await this.paymentsService.create({
+      let pointsEarned = 0;
+      if (dto.pay !== false) {
+        payment = await paymentRepo.save(paymentRepo.create({
           booking_id: booking.booking_id,
-          amount: totalAmount,
+          amount: payableTotal,
           payment_method: dto.payment_method || (isStaff ? 'cash' : 'momo'),
           payment_status: 'paid',
           channel: isStaff ? 'counter' : 'online',
-        });
+        }));
+        booking.status = 'confirmed';
+        booking = await bookingRepo.save(booking);
+
+        if (voucher) {
+          voucher.status = 'used';
+          voucher.used_at = new Date();
+          voucher.booking_id = booking.booking_id;
+          await voucherRepo.save(voucher);
+        }
+
+        // Chỉ cộng điểm khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
+        // mình. Nhân viên/admin tạo vé hộ tại quầy thì KHÔNG cộng điểm, kể
+        // cả khi khách đó đã có tài khoản khách hàng. Điểm tích lũy tính
+        // theo PHẦN TRĂM giá trị đơn THỰC TRẢ (đã trừ voucher, nếu có) —
+        // xem vouchers.constants.ts.
+        if (!isStaff) {
+          pointsEarned = Math.floor((payableTotal * EARN_POINTS_PERCENT) / 100 / POINT_VALUE_VND);
+          if (pointsEarned > 0) {
+            customer.points = Number(customer.points ?? 0) + pointsEarned;
+            await customerRepo.save(customer);
+          }
+        }
       }
 
-      // Đã có đủ vé (+ thanh toán nếu chọn thu ngay) -> tự xác nhận đơn.
-      const finalStatus = payment ? 'confirmed' : 'pending';
-      const finalBooking = await this.bookingsService.update(booking.booking_id, {
-        status: finalStatus,
-      });
+      return {
+        booking, tickets, payment, food_order: foodOrder, food_details: foodDetails,
+        ticket_total: ticketTotal, food_total: foodTotal,
+        discount_amount: discountAmount, voucher, points_earned: pointsEarned,
+      };
+    });
 
-      // Đơn đã thanh toán/xác nhận xong -> cộng điểm tích lũy cho khách
-      // hàng gắn với đơn này (áp dụng cho mọi kênh: khách tự đặt hoặc
-      // nhân viên đặt/thu tiền hộ tại quầy).
-      if (payment) {
-        await this.customersService.addPoints(customerId, BOOKING_LOYALTY_POINTS);
-      }
-
-      return { booking: finalBooking, tickets: createdTickets, payment };
-    } catch (err) {
-      // Lỗi giữa chừng (vd. ghế thứ 2 vừa bị người khác mua) -> dọn sạch
-      // booking + vé đã tạo trong lần checkout NÀY, để không có đơn dang dở.
-      await this.ticketRepository.delete({ booking_id: booking.booking_id });
-      await this.bookingsService.remove(booking.booking_id).catch(() => undefined);
-      throw err;
-    }
+    await Promise.all(seats.map((s) => this.seatLocksService.releaseAfterPurchase(dto.showtime_id, s.seat_id)));
+    return result;
   }
 }

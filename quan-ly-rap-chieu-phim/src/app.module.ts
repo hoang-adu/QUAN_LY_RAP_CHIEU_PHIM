@@ -18,11 +18,13 @@ import { TicketsModule } from './tickets/tickets.module';
 import { SeatLocksModule } from './seat-locks/seat-locks.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { TicketPricesModule } from './ticket-prices/ticket-prices.module';
+import { VouchersModule } from './vouchers/vouchers.module';
 
 // Thành viên 3
 import { PaymentsModule } from './payments/payments.module';
 import { ProductsModule } from './products/products.module';
 import { FoodOrdersModule } from './food-orders/food-orders.module';
+import { StatsModule } from './stats/stats.module';
 
 // Cookies + Session
 import { CookiesModule } from './cookies/cookies.module';
@@ -66,11 +68,13 @@ import { UploadsModule } from './uploads/uploads.module';
     SeatLocksModule,
     CheckoutModule,
     TicketPricesModule,
+    VouchersModule,
 
     // Thành viên 3
     PaymentsModule,
     ProductsModule,
     FoodOrdersModule,
+    StatsModule,
 
     // Cookies + Session
     CookiesModule,

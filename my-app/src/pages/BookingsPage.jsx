@@ -1,11 +1,19 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import useApiList from "../api/useApiList";
 import DataTable from "./DataTable";
+import Modal from "../components/Modal";
 import { updateItem } from "../api/apiClient";
 import { useToast } from "../components/ToastContext";
 import "./table.css";
 import "../components/ui.css";
+
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN");
+}
 
 function statusBadge(status) {
   const s = (status || "").toLowerCase();
@@ -35,10 +43,22 @@ export default function BookingsPage() {
   const showtimes = useApiList("showtimes");
   const rooms = useApiList("rooms");
   const seats = useApiList("seats");
+  const foodOrders = useApiList("food-orders");
+  const foodOrderDetails = useApiList("food-order-details");
+  const products = useApiList("products");
   const toast = useToast();
   const [updatingId, setUpdatingId] = useState(null);
   const [bookingKw, setBookingKw] = useState("");
   const [ticketKw, setTicketKw] = useState("");
+  const [billBooking, setBillBooking] = useState(null);
+
+  // Khi mở hóa đơn -> đánh dấu <body> để CSS in chỉ hiện đúng nội dung hóa
+  // đơn (.bill-print-area), ẩn hết sidebar/bảng dữ liệu còn lại. Xem quy
+  // tắc @media print trong ui.css.
+  useEffect(() => {
+    document.body.classList.toggle("bill-printing", !!billBooking);
+    return () => document.body.classList.remove("bill-printing");
+  }, [billBooking]);
 
   // Vào trang qua ô search ở Topbar (vd. /bookings?q=0912345678) -> tự
   // điền sẵn vào cả 2 ô lọc bên dưới (đơn lẫn vé), khỏi phải gõ lại.
@@ -54,6 +74,18 @@ export default function BookingsPage() {
 
   const customerNameById = Object.fromEntries(
     customers.rows.map((c) => [String(c.customer_id), c.full_name]),
+  );
+  const customerById = useMemo(
+    () => Object.fromEntries(customers.rows.map((c) => [String(c.customer_id), c])),
+    [customers.rows],
+  );
+  const productNameById = useMemo(
+    () => Object.fromEntries(products.rows.map((p) => [String(p.product_id), p.product_name])),
+    [products.rows],
+  );
+  const foodOrderByBookingId = useMemo(
+    () => Object.fromEntries(foodOrders.rows.map((f) => [String(f.booking_id), f])),
+    [foodOrders.rows],
   );
   const showtimeById = useMemo(
     () => Object.fromEntries(showtimes.rows.map((s) => [String(s.showtime_id), s])),
@@ -72,14 +104,15 @@ export default function BookingsPage() {
     [seats.rows],
   );
 
-  // Đơn nào đã thanh toán ONLINE thành công -> không cho hủy trên UI nữa
-  // (backend cũng chặn, nhưng disable sẵn ở đây để nhân viên không bấm nhầm
-  // rồi mới thấy lỗi). Đơn thanh toán tại quầy vẫn hủy được bình thường.
-  const paidOnlineBookingIds = useMemo(
+  // Đơn nào đã thanh toán (thu tiền) rồi -> không cho hủy trên UI nữa, dù
+  // thanh toán online hay tại quầy đều không hỗ trợ hoàn trả (backend cũng
+  // chặn, nhưng disable sẵn ở đây để nhân viên không bấm nhầm rồi mới thấy
+  // lỗi). Chỉ đơn CHƯA thanh toán mới hủy được.
+  const paidBookingIds = useMemo(
     () =>
       new Set(
         payments.rows
-          .filter((p) => p.channel === "online" && p.payment_status === "paid")
+          .filter((p) => p.payment_status === "paid")
           .map((p) => String(p.booking_id)),
       ),
     [payments.rows],
@@ -111,10 +144,13 @@ export default function BookingsPage() {
     [bookings.rows],
   );
 
-  function customerNameForBooking(bookingId) {
-    const customerId = customerIdByBookingId[String(bookingId)];
-    return customerNameById[String(customerId)] || "—";
-  }
+  const customerNameForBooking = useCallback(
+    (bookingId) => {
+      const customerId = customerIdByBookingId[String(bookingId)];
+      return customerNameById[String(customerId)] || "—";
+    },
+    [customerIdByBookingId, customerNameById],
+  );
 
   // Tìm đơn theo mã đơn (booking_id) hoặc tên/SĐT khách hàng.
   // Gõ SỐ (mã đơn/SĐT) -> so khớp theo TIỀN TỐ (startsWith), không dùng
@@ -163,7 +199,7 @@ export default function BookingsPage() {
         movieTitle.toLowerCase().includes(kw)
       );
     });
-  }, [tickets.rows, ticketKw, customerIdByBookingId, customerNameById, showtimeById, movieById]);
+  }, [tickets.rows, ticketKw, customerIdByBookingId, customerNameById, showtimeById, movieById, customerNameForBooking]);
 
   async function changeStatus(row, status) {
     setUpdatingId(row.booking_id);
@@ -179,8 +215,11 @@ export default function BookingsPage() {
     }
   }
 
-  function printBooking(row) {
+  function openBill(row) {
+    setBillBooking(row);
+  }
 
+  function handlePrintBill() {
     window.print();
   }
 
@@ -216,7 +255,7 @@ export default function BookingsPage() {
             label: "Khách hàng",
             render: (v) => customerNameById[String(v)] || (v ? `#${v}` : "—"),
           },
-          { key: "booking_date", label: "Ngày đặt" },
+          { key: "booking_date", label: "Ngày đặt", render: formatDateTime },
           {
             key: "ticket_count",
             label: "Số vé",
@@ -249,11 +288,11 @@ export default function BookingsPage() {
               <button
                 className="ui-btn ui-btn-danger ui-btn-sm"
                 disabled={
-                  updatingId === row.booking_id || paidOnlineBookingIds.has(String(row.booking_id))
+                  updatingId === row.booking_id || paidBookingIds.has(String(row.booking_id))
                 }
                 title={
-                  paidOnlineBookingIds.has(String(row.booking_id))
-                    ? "Đơn đã thanh toán online — không hỗ trợ hoàn tiền nên không thể hủy"
+                  paidBookingIds.has(String(row.booking_id))
+                    ? "Vé đã mua (đã thanh toán) — không hỗ trợ hoàn trả, dù mua online hay tại quầy"
                     : "Hủy đơn sẽ nhả lại ghế cho suất chiếu này"
                 }
                 onClick={() => changeStatus(row, "cancelled")}
@@ -261,8 +300,8 @@ export default function BookingsPage() {
                 Hủy
               </button>
             )}
-            <button className="ui-btn ui-btn-ghost ui-btn-sm no-print" onClick={() => printBooking(row)}>
-              In vé
+            <button className="ui-btn ui-btn-ghost ui-btn-sm no-print" onClick={() => openBill(row)}>
+              Xem hóa đơn
             </button>
           </>
         )}
@@ -330,6 +369,149 @@ export default function BookingsPage() {
           },
         ]}
       />
+
+      {billBooking && (() => {
+        const billTickets = tickets.rows.filter(
+          (t) => String(t.booking_id) === String(billBooking.booking_id),
+        );
+        const billCustomer = customerById[String(billBooking.customer_id)];
+        const billPayment = paymentByBookingId[String(billBooking.booking_id)];
+        const billFoodOrder = foodOrderByBookingId[String(billBooking.booking_id)];
+        const billFoodDetails = billFoodOrder
+          ? foodOrderDetails.rows.filter(
+              (d) => String(d.order_id) === String(billFoodOrder.order_id),
+            )
+          : [];
+
+        return (
+          <Modal
+            open
+            onClose={() => setBillBooking(null)}
+            title={`Hóa đơn — Đơn #${billBooking.booking_id}`}
+            width={560}
+          >
+            <div className="bill-print-area">
+              <div className="bill-header">
+                <div className="bill-shop">RẠP PHIM MẶT TRỜI NHỎ</div>
+                <div className="bill-title">HÓA ĐƠN BÁN VÉ</div>
+              </div>
+
+              <div className="bill-meta">
+                <div>
+                  <span>Mã đơn</span>
+                  <b>#{billBooking.booking_id}</b>
+                </div>
+                <div>
+                  <span>Ngày đặt</span>
+                  <b>{formatDateTime(billBooking.booking_date)}</b>
+                </div>
+                <div>
+                  <span>Khách hàng</span>
+                  <b>{billCustomer?.full_name || customerNameForBooking(billBooking.booking_id)}</b>
+                </div>
+                {billCustomer?.phone && (
+                  <div>
+                    <span>Điện thoại</span>
+                    <b>{billCustomer.phone}</b>
+                  </div>
+                )}
+              </div>
+
+              <div className="bill-section-title">Vé xem phim</div>
+              <table className="bill-table">
+                <thead>
+                  <tr>
+                    <th>Phim / Suất chiếu</th>
+                    <th>Ghế</th>
+                    <th>Giá vé</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {billTickets.map((t) => {
+                    const showtime = showtimeById[String(t.showtime_id)];
+                    const movie = showtime ? movieById[String(showtime.movie_id)] : null;
+                    const room = showtime ? roomById[String(showtime.room_id)] : null;
+                    return (
+                      <tr key={t.ticket_id}>
+                        <td>
+                          <div>{movie?.title || `Phim #${showtime?.movie_id}`}</div>
+                          <div className="bill-sub">
+                            {showtime?.show_date} · {showtime?.start_time?.slice(0, 5)} ·{" "}
+                            {room?.room_name || `Phòng #${showtime?.room_id}`}
+                          </div>
+                        </td>
+                        <td>{seatById[String(t.seat_id)]?.seat_number || `#${t.seat_id}`}</td>
+                        <td>
+                          {t.ticket_price != null
+                            ? Number(t.ticket_price).toLocaleString("vi-VN") + " đ"
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {billFoodDetails.length > 0 && (
+                <>
+                  <div className="bill-section-title">Đồ ăn / thức uống</div>
+                  <table className="bill-table">
+                    <thead>
+                      <tr>
+                        <th>Sản phẩm</th>
+                        <th>SL</th>
+                        <th>Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billFoodDetails.map((d) => (
+                        <tr key={`${d.order_id}-${d.product_id}`}>
+                          <td>{productNameById[String(d.product_id)] || `#${d.product_id}`}</td>
+                          <td>{d.quantity}</td>
+                          <td>
+                            {(Number(d.unit_price) * Number(d.quantity)).toLocaleString("vi-VN")} đ
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+
+              <div className="bill-total">
+                <span>Tổng cộng</span>
+                <b>
+                  {billBooking.total_amount != null
+                    ? Number(billBooking.total_amount).toLocaleString("vi-VN") + " đ"
+                    : "—"}
+                </b>
+              </div>
+
+              <div className="bill-meta">
+                <div>
+                  <span>Thanh toán</span>
+                  <b>
+                    {billPayment
+                      ? `${billPayment.payment_method || "—"} (${billPayment.payment_status || "—"})`
+                      : "Chưa thanh toán"}
+                  </b>
+                </div>
+              </div>
+
+              <div className="bill-footer">Cảm ơn quý khách đã sử dụng dịch vụ!</div>
+            </div>
+
+            <div className="ui-form-actions no-print">
+              <button type="button" className="ui-btn ui-btn-ghost" onClick={() => setBillBooking(null)}>
+                Đóng
+              </button>
+              <button type="button" className="ui-btn ui-btn-primary" onClick={handlePrintBill}>
+                🖨️ In hóa đơn
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
     </>
   );
 }

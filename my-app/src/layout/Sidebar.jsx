@@ -67,7 +67,7 @@ export default function Sidebar() {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === "/"}
+                  end
                   className={({ isActive }) =>
                     "qlrcp-nav-item" + (isActive ? " active" : "")
                   }

@@ -16,19 +16,28 @@ export class AuthService {
   ) {}
 
   async register(registerCustomerDto: RegisterCustomerDto) {
-    const { email } = registerCustomerDto;
+    const { email, phone } = registerCustomerDto;
     const existingCustomer = await this.customersService.findByEmail(email);
 
     if (existingCustomer) {
       throw new BadRequestException('Email đã được sử dụng');
     }
 
+    if (phone) {
+      const existingPhone = await this.customersService.findByPhone(phone);
+      if (existingPhone) {
+        throw new BadRequestException('Số điện thoại đã được sử dụng');
+      }
+    }
+
     const customer = await this.customersService.create(registerCustomerDto);
     return this.toSafeCustomer(customer);
   }
 
-  async validateUser(email: string, password: string) {
-    const customer = await this.customersService.findByEmail(email);
+  async validateUser(emailOrPhone: string, password: string) {
+    const customer = await this.customersService.findByEmailOrPhone(
+      emailOrPhone,
+    );
     if (!customer || !customer.password) {
       return null;
     }

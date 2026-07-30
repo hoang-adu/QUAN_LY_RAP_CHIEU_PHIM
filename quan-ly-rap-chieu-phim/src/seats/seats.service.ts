@@ -2,20 +2,18 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Seat } from './seat.entity';
-import { CreateSeatDto } from './dto/create-seat.dto';
 import { UpdateSeatDto } from './dto/update-seat.dto';
 
+// Mỗi phòng cố định 80 ghế (30 thường + 40 vip + 10 couple) — theo nghiệp vụ
+// KHÔNG thêm/bớt ghế qua giao diện lẫn qua API. Vì vậy service này CHỦ Ý
+// không có create()/remove(): dữ liệu ghế chỉ được khởi tạo qua seed, chỉ
+// cho phép update (vd. sửa loại ghế) khi thật sự cần sửa lỗi dữ liệu.
 @Injectable()
 export class SeatsService {
   constructor(
     @InjectRepository(Seat)
     private readonly seatRepository: Repository<Seat>,
   ) {}
-
-  async create(createSeatDto: CreateSeatDto): Promise<Seat> {
-    const seat = this.seatRepository.create(createSeatDto);
-    return this.seatRepository.save(seat);
-  }
 
   async findAll(): Promise<Seat[]> {
     return this.seatRepository.find({ order: { seat_id: 'ASC' } });
@@ -33,11 +31,5 @@ export class SeatsService {
     const seat = await this.findOne(id);
     Object.assign(seat, updateSeatDto);
     return this.seatRepository.save(seat);
-  }
-
-  async remove(id: number): Promise<{ message: string }> {
-    const seat = await this.findOne(id);
-    await this.seatRepository.remove(seat);
-    return { message: `Đã xóa ghế có id = ${id}` };
   }
 }

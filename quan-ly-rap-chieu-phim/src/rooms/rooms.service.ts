@@ -2,20 +2,18 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Room } from './room.entity';
-import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
+// Phòng chiếu cố định (5 phòng x 80 ghế) — theo nghiệp vụ KHÔNG được thêm/xóa
+// phòng qua giao diện lẫn qua API. Vì vậy service này CHỦ Ý không có create()
+// / remove(): dữ liệu phòng chỉ được khởi tạo qua seed, chỉ cho phép sửa
+// (update) các trường như tên phòng khi cần.
 @Injectable()
 export class RoomsService {
   constructor(
     @InjectRepository(Room)
     private readonly roomRepository: Repository<Room>,
   ) {}
-
-  async create(createRoomDto: CreateRoomDto): Promise<Room> {
-    const room = this.roomRepository.create(createRoomDto);
-    return this.roomRepository.save(room);
-  }
 
   async findAll(): Promise<Room[]> {
     return this.roomRepository.find({ order: { room_id: 'ASC' } });
@@ -33,11 +31,5 @@ export class RoomsService {
     const room = await this.findOne(id);
     Object.assign(room, updateRoomDto);
     return this.roomRepository.save(room);
-  }
-
-  async remove(id: number): Promise<{ message: string }> {
-    const room = await this.findOne(id);
-    await this.roomRepository.remove(room);
-    return { message: `Đã xóa phòng có id = ${id}` };
   }
 }

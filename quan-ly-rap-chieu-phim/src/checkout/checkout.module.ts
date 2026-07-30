@@ -3,26 +3,34 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Ticket } from '../tickets/ticket.entity';
 import { Seat } from '../seats/seat.entity';
 import { Showtime } from '../showtimes/showtime.entity';
+import { Booking } from '../bookings/booking.entity';
+import { Payment } from '../payments/payment.entity';
+import { Product } from '../products/product.entity';
+import { FoodOrder } from '../food-orders/food-order.entity';
+import { FoodOrderDetail } from '../food-orders/food-order-detail.entity';
+import { Customer } from '../customers/customer.entity';
+import { Voucher } from '../vouchers/voucher.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { TicketPricesModule } from '../ticket-prices/ticket-prices.module';
 import { CustomersModule } from '../customers/customers.module';
+import { SeatLocksModule } from '../seat-locks/seat-locks.module';
 import { CheckoutService } from './checkout.service';
 import { CheckoutController } from './checkout.controller';
 
-// LƯU Ý phụ thuộc module: BookingsModule KHÔNG được import TicketsModule/
-// PaymentsModule (2 module đó đã import ngược lại BookingsModule). Vì vậy
-// logic "gộp 3 bước" này phải nằm ở 1 module riêng (CheckoutModule) đứng
-// trên cả 3, thay vì nhét vào BookingsModule — tránh circular dependency.
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Ticket, Seat, Showtime]),
+    TypeOrmModule.forFeature([
+      Ticket, Seat, Showtime, Booking, Payment, Product,
+      FoodOrder, FoodOrderDetail, Customer, Voucher,
+    ]),
     BookingsModule,
     TicketsModule,
     PaymentsModule,
     TicketPricesModule,
     CustomersModule,
+    SeatLocksModule,
   ],
   controllers: [CheckoutController],
   providers: [CheckoutService],

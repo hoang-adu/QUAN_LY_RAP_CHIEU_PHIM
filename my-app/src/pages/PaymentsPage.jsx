@@ -12,6 +12,13 @@ function statusBadge(status) {
   return <span className={"et-badge " + cls}>{status === "refunded" ? "Đã hoàn (hủy đơn)" : status || "—"}</span>;
 }
 
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("vi-VN");
+}
+
 function channelBadge(channel) {
   if (!channel) return <span className="page-sub">—</span>;
   return channel === "online" ? (
@@ -98,7 +105,7 @@ export default function PaymentsPage() {
             label: "Khách hàng",
             render: (_v, row) => customerNameByBookingId[String(row.booking_id)] || "—",
           },
-          { key: "payment_date", label: "Ngày thanh toán" },
+          { key: "payment_date", label: "Ngày thanh toán", render: formatDateTime },
           {
             key: "amount",
             label: "Số tiền",
@@ -109,10 +116,11 @@ export default function PaymentsPage() {
           { key: "payment_status", label: "Trạng thái", render: statusBadge },
         ]}
         actions={(row) => {
-          // Thanh toán ONLINE đã 'paid' bị khóa hoàn toàn — không hoàn tiền,
-          // không sửa trạng thái (backend cũng chặn ở PaymentsService, đây
-          // chỉ là ẩn nút cho gọn UI, tránh nhân viên bấm rồi mới thấy lỗi).
-          const locked = row.channel === "online" && row.payment_status === "paid";
+          // Thanh toán đã 'paid' bị khóa hoàn toàn — không hoàn tiền, không
+          // sửa trạng thái, dù thu tiền online hay tại quầy (backend cũng
+          // chặn ở BookingsService, đây chỉ là ẩn nút cho gọn UI, tránh nhân
+          // viên bấm rồi mới thấy lỗi).
+          const locked = row.payment_status === "paid";
           if (locked) {
             return <span className="page-sub">🔒 Đã khóa (không hoàn tiền)</span>;
           }

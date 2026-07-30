@@ -298,7 +298,6 @@ export default function MoviesPage() {
   return (
     <CrudSection
       title="Quản lý Phim"
-      subtitle="Dữ liệu thật từ API /movies"
       apiPath="movies"
       idKey="movie_id"
       rows={rows}

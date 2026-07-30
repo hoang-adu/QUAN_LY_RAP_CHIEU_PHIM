@@ -100,7 +100,6 @@ export default function ShowtimesPage() {
   return (
     <CrudSection
       title="Suất chiếu"
-      subtitle="Dữ liệu thật từ API /showtimes"
       apiPath="showtimes"
       idKey="showtime_id"
       rows={rowsWithNames}

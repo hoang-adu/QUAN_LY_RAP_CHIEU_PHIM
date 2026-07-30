@@ -1,4 +1,3 @@
-
 import React from "react";
 import useApiList from "../api/useApiList";
 import CrudSection from "../components/CrudSection";
@@ -23,7 +22,6 @@ export default function CustomersPage() {
   return (
     <CrudSection
       title="Khách hàng"
-      subtitle="Dữ liệu thật từ API /customers"
       apiPath="customers"
       idKey="customer_id"
       rows={rows}

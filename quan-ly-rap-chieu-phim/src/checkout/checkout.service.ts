@@ -107,7 +107,15 @@ export class CheckoutService {
       const customerRepo = manager.getRepository(Customer);
       const voucherRepo = manager.getRepository(Voucher);
 
-      const customer = await customerRepo.findOne({ where: { customer_id: Number(customerId) } });
+      // Khóa dòng khách hàng ngay từ đầu transaction — sau này sẽ đọc/ghi
+      // customer.points (cộng điểm tích lũy), giống cách vouchers.service.ts
+      // khóa dòng này khi đổi điểm, để 2 giao dịch cùng lúc trên 1 khách
+      // hàng (vừa đặt vé vừa đổi voucher) không làm mất cập nhật của nhau.
+      const customer = await customerRepo
+        .createQueryBuilder('c')
+        .setLock('pessimistic_write')
+        .where('c.customer_id = :id', { id: Number(customerId) })
+        .getOne();
       if (!customer) throw new NotFoundException(`Không tìm thấy khách hàng #${customerId}`);
 
       for (const seat of seats) {

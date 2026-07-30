@@ -57,7 +57,7 @@ export class CustomersController {
     @Request() req: AuthedRequest,
   ) {
     this.assertSelfOrStaff(req, id);
-    return this.customersService.update(id, updateCustomerDto);
+    return this.customersService.update(id, updateCustomerDto, req.user);
   }
 
   @UseGuards(RolesGuard)

@@ -65,8 +65,15 @@ export class TicketsController {
 
   // ─────────────────────────────────────────
   // GET /tickets
-  // Lấy toàn bộ danh sách vé
+  // Lấy toàn bộ danh sách vé. KHÔNG giới hạn theo role (chỉ cần đăng nhập)
+  // vì CustomerBookingPage/CustomerAccountPage cần list này để (1) biết ghế
+  // nào đã có người đặt khi vẽ sơ đồ ghế — kể cả ghế của khách khác, và (2)
+  // lọc ra vé của chính mình ở "Tài khoản của tôi". Trước đây route này
+  // hoàn toàn KHÔNG có guard (kể cả người CHƯA đăng nhập cũng gọi được) —
+  // đó là lỗ hổng đã sửa; yêu cầu đăng nhập là đủ để chặn lộ dữ liệu ra
+  // ngoài hệ thống, không cần siết xuống chỉ nhân viên/admin.
   // ─────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll() {
     return this.ticketsService.findAll();
@@ -74,19 +81,42 @@ export class TicketsController {
 
   // ─────────────────────────────────────────
   // GET /tickets/:id
-  // Lấy chi tiết 1 vé theo ID
+  // Lấy chi tiết 1 vé theo ID — khách hàng chỉ xem được vé thuộc đơn của
+  // chính mình; nhân viên/admin xem được mọi vé.
   // ─────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.ticketsService.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: AuthedRequest) {
+    const ticket = await this.ticketsService.findOne(id);
+    const user = req.user;
+    const isStaff = user?.role === 'admin' || user?.role === 'employee';
+    if (!isStaff) {
+      const booking = await this.bookingsService.findOne(ticket.booking_id);
+      if (booking.customer_id !== user?.customer_id) {
+        throw new ForbiddenException('Bạn không có quyền xem vé này');
+      }
+    }
+    return ticket;
   }
 
   // ─────────────────────────────────────────
   // GET /tickets/booking/:bookingId
-  // Lấy tất cả vé của 1 đơn đặt vé
+  // Lấy tất cả vé của 1 đơn đặt vé — cùng quy tắc sở hữu như trên.
   // ─────────────────────────────────────────
+  @UseGuards(JwtAuthGuard)
   @Get('booking/:bookingId')
-  findByBooking(@Param('bookingId', ParseIntPipe) bookingId: number) {
+  async findByBooking(
+    @Param('bookingId', ParseIntPipe) bookingId: number,
+    @Request() req: AuthedRequest,
+  ) {
+    const user = req.user;
+    const isStaff = user?.role === 'admin' || user?.role === 'employee';
+    if (!isStaff) {
+      const booking = await this.bookingsService.findOne(bookingId);
+      if (booking.customer_id !== user?.customer_id) {
+        throw new ForbiddenException('Bạn không có quyền xem vé của đơn này');
+      }
+    }
     return this.ticketsService.findByBooking(bookingId);
   }
 

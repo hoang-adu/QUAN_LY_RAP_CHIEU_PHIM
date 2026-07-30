@@ -22,7 +22,9 @@ export class CreatePaymentDto {
   @IsOptional()
   payment_method?: string;
 
-  @IsString()
+  @IsIn(['pending', 'paid', 'failed'], {
+    message: 'payment_status phải là pending, paid hoặc failed',
+  })
   @IsOptional()
   payment_status?: string;
 

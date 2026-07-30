@@ -17,6 +17,19 @@ export class PaymentsService {
   ) {}
 
   async create(createPaymentDto: CreatePaymentDto): Promise<Payment> {
+    // Mỗi đơn chỉ nên có tối đa 1 payment 'paid' (BookingsPage/PaymentsPage
+    // đều giả định 1-booking-1-payment) — chặn tạo thêm để tránh thu tiền
+    // trùng/đối soát doanh thu sai lệch.
+    if (createPaymentDto.payment_status === 'paid') {
+      const existingPaid = await this.paymentRepository.findOne({
+        where: { booking_id: createPaymentDto.booking_id, payment_status: 'paid' },
+      });
+      if (existingPaid) {
+        throw new BadRequestException(
+          `Đơn #${createPaymentDto.booking_id} đã có thanh toán 'paid' (payment #${existingPaid.payment_id}).`,
+        );
+      }
+    }
     const payment = this.paymentRepository.create(createPaymentDto);
     return this.paymentRepository.save(payment);
   }

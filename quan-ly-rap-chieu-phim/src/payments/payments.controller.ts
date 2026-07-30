@@ -36,30 +36,21 @@ export class PaymentsController {
     private readonly bookingsService: BookingsService,
   ) {}
 
+  // Chỉ nhân viên/admin được gọi route này (thu tiền tại quầy, hoặc thu
+  // tiền sau cho đơn đã tạo với pay:false). Khách hàng tự đặt online KHÔNG
+  // bao giờ cần gọi route này — payment của họ đã được chính server tạo tự
+  // động, trong 1 transaction, bên trong POST /bookings/checkout (giá và
+  // tổng tiền server tự tính, không nhận từ client). Nếu route này mở cho
+  // khách hàng, họ có thể tự POST payment_status:'paid' với amount tùy ý
+  // cho đơn của chính mình mà không cần trả tiền thật.
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'employee')
   @Post()
-  async create(
-    @Body() createPaymentDto: CreatePaymentDto,
-    @Request() req: AuthedRequest,
-  ) {
-    const user = req.user;
-    const isStaff = user?.role === 'admin' || user?.role === 'employee';
-    if (!isStaff) {
-      const booking = await this.bookingsService.findOne(
-        createPaymentDto.booking_id,
-      );
-      if (booking.customer_id !== user?.customer_id) {
-        throw new ForbiddenException(
-          'Bạn chỉ có thể thanh toán cho đơn đặt vé của chính mình',
-        );
-      }
-    }
-    // channel do BACKEND quyết định theo role người gọi API, không nhận từ
-    // client — nhân viên bán tại quầy = 'counter', khách tự đặt = 'online'.
-    // Đây là căn cứ để chặn sửa/hoàn tiền thanh toán online ở bước update.
-    return this.paymentsService.create({
-      ...createPaymentDto,
-      channel: isStaff ? 'counter' : 'online',
-    });
+  async create(@Body() createPaymentDto: CreatePaymentDto) {
+    // Route này chỉ nhân viên/admin gọi được (xem guard phía trên) nên
+    // channel luôn là 'counter' — payment 'online' (khách tự đặt) chỉ được
+    // tạo bên trong checkout.service.ts, không đi qua route này.
+    return this.paymentsService.create({ ...createPaymentDto, channel: 'counter' });
   }
 
   @UseGuards(RolesGuard)

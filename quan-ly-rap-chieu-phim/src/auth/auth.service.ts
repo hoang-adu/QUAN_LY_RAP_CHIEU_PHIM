@@ -50,7 +50,12 @@ export class AuthService {
     return this.toSafeCustomer(customer);
   }
 
-  private toSafeCustomer(customer: Customer) {
+  private toSafeCustomer(
+    customer: Pick<
+      Customer,
+      'customer_id' | 'full_name' | 'phone' | 'email' | 'points'
+    >,
+  ) {
     return {
       customer_id: customer.customer_id,
       full_name: customer.full_name,

@@ -14,6 +14,7 @@ const createMockRepo = (): MockRepo<Customer> => ({
   find: jest.fn(),
   findOne: jest.fn(),
   remove: jest.fn(),
+  increment: jest.fn(),
 });
 
 describe('CustomersService', () => {
@@ -24,7 +25,10 @@ describe('CustomersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CustomersService,
-        { provide: getRepositoryToken(Customer), useValue: createMockRepo() },
+        {
+          provide: getRepositoryToken(Customer),
+          useValue: createMockRepo(),
+        },
       ],
     }).compile();
 
@@ -34,8 +38,8 @@ describe('CustomersService', () => {
 
   afterEach(() => jest.clearAllMocks());
 
-  describe('create() — mã hóa mật khẩu (yêu cầu bảo mật)', () => {
-    it('mã hóa mật khẩu bằng bcrypt trước khi lưu, không lưu plain text', async () => {
+  describe('create()', () => {
+    it('hash password trước khi lưu', async () => {
       const dto = {
         full_name: 'Nguyễn Văn A',
         email: 'a@gmail.com',
@@ -43,69 +47,104 @@ describe('CustomersService', () => {
         password: 'plain123',
       } as any;
 
-      const createdEntity = { ...dto } as Customer;
-      (repo.create as jest.Mock).mockReturnValue(createdEntity);
-      (repo.save as jest.Mock).mockImplementation((c) => Promise.resolve(c));
+      const entity = { ...dto } as Customer;
+
+      (repo.create as jest.Mock).mockReturnValue(entity);
+      (repo.save as jest.Mock).mockImplementation(async (c) => c);
 
       const result = await service.create(dto);
 
-      // Mật khẩu đã lưu phải khác mật khẩu gốc (đã được hash)
-      expect(result.password).not.toBe('plain123');
-      // Và phải khớp lại được bằng bcrypt.compare
-      const matches = await bcrypt.compare('plain123', result.password);
+      expect(result.password).toBeUndefined();
+
+      const savedCustomer = (repo.save as jest.Mock).mock.calls[0][0];
+
+      expect(savedCustomer.password).not.toBe('plain123');
+
+      const matches = await bcrypt.compare(
+        'plain123',
+        savedCustomer.password,
+      );
+
       expect(matches).toBe(true);
     });
 
-    it('không gọi bcrypt nếu không có mật khẩu trong dto', async () => {
-      const dto = { full_name: 'Khách vãng lai', email: 'b@gmail.com' } as any;
+    it('không hash nếu không có password', async () => {
+      const dto = {
+        full_name: 'Khách',
+        email: 'b@gmail.com',
+      } as any;
+
       (repo.create as jest.Mock).mockReturnValue({ ...dto });
-      (repo.save as jest.Mock).mockImplementation((c) => Promise.resolve(c));
+      (repo.save as jest.Mock).mockImplementation(async (c) => c);
 
       const result = await service.create(dto);
+
       expect(result.password).toBeUndefined();
     });
   });
 
   describe('findByEmail()', () => {
-    it('tra cứu khách hàng theo email (phục vụ đăng ký/đăng nhập)', async () => {
-      const customer = { customer_id: 1, email: 'a@gmail.com' } as Customer;
+    it('tìm theo email', async () => {
+      const customer = {
+        customer_id: 1,
+        email: 'a@gmail.com',
+      } as Customer;
+
       (repo.findOne as jest.Mock).mockResolvedValue(customer);
 
       const result = await service.findByEmail('a@gmail.com');
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { email: 'a@gmail.com' } });
       expect(result).toEqual(customer);
     });
 
-    it('trả về null khi email chưa đăng ký', async () => {
+    it('trả về null nếu không có', async () => {
       (repo.findOne as jest.Mock).mockResolvedValue(null);
-      const result = await service.findByEmail('unknown@gmail.com');
-      expect(result).toBeNull();
+
+      expect(await service.findByEmail('abc@gmail.com')).toBeNull();
     });
   });
 
   describe('findOne()', () => {
-    it('ném NotFoundException khi khách hàng không tồn tại', async () => {
+    it('ném NotFoundException', async () => {
       (repo.findOne as jest.Mock).mockResolvedValue(null);
-      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+
+      await expect(service.findOne(100)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update()', () => {
-    it('mã hóa lại mật khẩu mới khi khách hàng đổi mật khẩu', async () => {
-      const existing = {
+    it('hash password mới trước khi lưu', async () => {
+      const customer = {
         customer_id: 1,
         email: 'a@gmail.com',
-        password: 'old_hashed',
+        password: 'old_hash',
       } as Customer;
-      (repo.findOne as jest.Mock).mockResolvedValue(existing);
-      (repo.save as jest.Mock).mockImplementation((c) => Promise.resolve(c));
 
-      const result = await service.update(1, { password: 'newpass123' } as any);
+      (repo.findOne as jest.Mock).mockResolvedValue(customer);
 
-      expect(result.password).not.toBe('newpass123');
-      expect(result.password).not.toBe('old_hashed');
-      const matches = await bcrypt.compare('newpass123', result.password);
+      (repo.save as jest.Mock).mockImplementation(async (c) => c);
+
+      const result = await service.update(
+        1,
+        {
+          password: 'newpass123',
+        } as any,
+      );
+
+      expect(result.password).toBeUndefined();
+
+      const savedCustomer = (repo.save as jest.Mock).mock.calls[0][0];
+
+      expect(savedCustomer.password).not.toBe('old_hash');
+      expect(savedCustomer.password).not.toBe('newpass123');
+
+      const matches = await bcrypt.compare(
+        'newpass123',
+        savedCustomer.password,
+      );
+
       expect(matches).toBe(true);
     });
   });

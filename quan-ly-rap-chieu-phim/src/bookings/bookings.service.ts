@@ -54,17 +54,41 @@ export class BookingsService {
     const isCancelling =
       updateBookingDto.status === 'cancelled' && booking.status !== 'cancelled';
 
-    if (isCancelling) {
+    const paid = await this.paymentRepository.findOne({
+      where: { booking_id: id, payment_status: 'paid' },
+    });
+
+    if (isCancelling && paid) {
       // Vé đã mua (đã thanh toán) thì KHÔNG được hủy — dù mua online hay
       // thanh toán trực tiếp tại quầy đều không hỗ trợ hoàn trả. Hủy sẽ
       // nhả ghế miễn phí trong khi tiền khách trả đã thu, tương đương hoàn
       // tiền trá hình. Chỉ đơn CHƯA thanh toán mới hủy được.
-      const paid = await this.paymentRepository.findOne({
-        where: { booking_id: id, payment_status: 'paid' },
-      });
-      if (paid) {
+      throw new BadRequestException(
+        `Đơn #${id} đã thanh toán — vé đã mua không được hoàn trả (dù mua online hay tại quầy).`,
+      );
+    }
+
+    if (paid) {
+      // Đơn đã thu tiền -> khóa customer_id/total_amount, không cho sửa
+      // lệch khỏi payment đã ghi nhận (payment.amount tính theo customer_id
+      // + total_amount tại thời điểm thanh toán) — tránh 1 đơn "đổi chủ"
+      // hoặc đổi số tiền sau khi tiền đã thu xong, làm sai lệch đối soát.
+      // Chỉ chặn khi giá trị THỰC SỰ đổi khác — cho phép PATCH lại đúng
+      // giá trị cũ (no-op) không gây lỗi.
+      if (
+        updateBookingDto.customer_id !== undefined &&
+        Number(updateBookingDto.customer_id) !== Number(booking.customer_id)
+      ) {
         throw new BadRequestException(
-          `Đơn #${id} đã thanh toán — vé đã mua không được hoàn trả (dù mua online hay tại quầy).`,
+          `Đơn #${id} đã thanh toán — không được đổi khách hàng của đơn.`,
+        );
+      }
+      if (
+        updateBookingDto.total_amount !== undefined &&
+        Number(updateBookingDto.total_amount) !== Number(booking.total_amount)
+      ) {
+        throw new BadRequestException(
+          `Đơn #${id} đã thanh toán — không được đổi số tiền của đơn.`,
         );
       }
     }

@@ -222,16 +222,17 @@ export class CheckoutService {
           await voucherRepo.save(voucher);
         }
 
-        // Cộng điểm cho MỌI đơn đã thanh toán, bất kể khách tự đặt online
-        // hay nhân viên/admin bán hộ tại quầy — khách vãng lai đã có hồ sơ
-        // (customer_id) và mua nhiều lần vẫn phải được tích điểm như khách
-        // tự đặt, nếu không sẽ không bao giờ tích lũy được gì dù mua rất
-        // nhiều lần tại quầy. Điểm tích lũy tính theo PHẦN TRĂM giá trị đơn
-        // THỰC TRẢ (đã trừ voucher, nếu có) — xem vouchers.constants.ts.
-        pointsEarned = Math.floor((payableTotal * EARN_POINTS_PERCENT) / 100 / POINT_VALUE_VND);
-        if (pointsEarned > 0) {
-          customer.points = Number(customer.points ?? 0) + pointsEarned;
-          await customerRepo.save(customer);
+        // Chỉ cộng điểm khi KHÁCH HÀNG tự đặt vé online qua tài khoản của
+        // mình. Nhân viên/admin tạo vé hộ tại quầy thì KHÔNG cộng điểm, kể
+        // cả khi khách đó đã có tài khoản khách hàng. Điểm tích lũy tính
+        // theo PHẦN TRĂM giá trị đơn THỰC TRẢ (đã trừ voucher, nếu có) —
+        // xem vouchers.constants.ts.
+        if (!isStaff) {
+          pointsEarned = Math.floor((payableTotal * EARN_POINTS_PERCENT) / 100 / POINT_VALUE_VND);
+          if (pointsEarned > 0) {
+            customer.points = Number(customer.points ?? 0) + pointsEarned;
+            await customerRepo.save(customer);
+          }
         }
       }
 

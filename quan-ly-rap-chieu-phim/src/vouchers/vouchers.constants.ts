@@ -1,5 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-// TÍCH ĐIỂM (áp dụng khi khách hàng tự đặt vé online và thanh toán ngay)
+// TÍCH ĐIỂM — CHỈ áp dụng khi khách hàng TỰ đặt vé online qua tài khoản của
+// mình và thanh toán ngay. Nhân viên/admin bán vé hộ tại quầy KHÔNG cộng
+// điểm, kể cả khi khách đó đã có tài khoản (xem checkout.service.ts).
 // Trước đây: cộng cố định 5 điểm/đơn bất kể giá trị đơn hàng.
 // Nay: tính theo PHẦN TRĂM giá trị đơn hàng thực trả (sau khi trừ voucher,
 // nếu có) — đơn càng lớn càng được nhiều điểm, đúng bản chất loyalty.

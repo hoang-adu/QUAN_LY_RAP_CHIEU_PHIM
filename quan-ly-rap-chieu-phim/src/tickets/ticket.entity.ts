@@ -1,6 +1,12 @@
-import { Entity, Column, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
+// Ràng buộc UNIQUE thật ở DB — lớp phòng thủ cuối cùng chống bán trùng 1
+// ghế cho 2 booking khác nhau trong cùng 1 suất chiếu, phòng khi khóa
+// pessimistic_write trong checkout.service.ts/tickets.service.ts bị bỏ
+// qua (bug, hoặc 1 đường tạo vé mới trong tương lai quên khóa). Giống hệt
+// cách seat_lock.entity.ts đã làm cho bảng seat_locks.
 @Entity('tickets')
+@Unique('UQ_ticket_showtime_seat', ['showtime_id', 'seat_id'])
 export class Ticket {
   @PrimaryGeneratedColumn()
   ticket_id: number;
